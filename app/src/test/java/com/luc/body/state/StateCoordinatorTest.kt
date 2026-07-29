@@ -2,6 +2,7 @@ package com.luc.body.state
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StateCoordinatorTest {
@@ -28,10 +29,10 @@ class StateCoordinatorTest {
         val sink = RecordingSink()
         val coordinator = StateCoordinator(sink, FakeScheduler()) { Expression.HAPPY }
 
-        coordinator.onRemoteState(remote(text = "  ", revision = "blank"))
+        coordinator.onRemoteState(remote(text = "  ", revision = REVISION_1))
         assertNull(sink.states.last().bubbleText)
 
-        coordinator.onRemoteState(remote(text = "x".repeat(121), revision = "long"))
+        coordinator.onRemoteState(remote(text = "x".repeat(121), revision = REVISION_2))
         assertEquals("x".repeat(120), sink.states.last().bubbleText)
     }
 
@@ -40,7 +41,7 @@ class StateCoordinatorTest {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
-        val state = remote(text = "Hey", revision = "2026-07-29T12:00:00Z")
+        val state = remote(text = "Hey", revision = REVISION_1)
 
         coordinator.onRemoteState(state)
         coordinator.onRemoteState(state.copy(expression = Expression.SLEEPY, bubbleText = "new text"))
@@ -49,7 +50,7 @@ class StateCoordinatorTest {
         assertEquals(2, sink.states.size)
         assertEquals(Expression.ANGRY, sink.states.first().expression)
         assertEquals(null, sink.states.last().bubbleText)
-        assertEquals("2026-07-29T12:00:00Z", sink.states.last().revision)
+        assertEquals(REVISION_1, sink.states.last().revision)
     }
 
     @Test
@@ -73,16 +74,16 @@ class StateCoordinatorTest {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
-        coordinator.onRemoteState(remote(expression = Expression.IDLE, revision = "1"))
+        coordinator.onRemoteState(remote(expression = Expression.IDLE, revision = REVISION_1))
 
         coordinator.onLocalTap()
-        coordinator.onRemoteState(remote(Expression.ANGRY, "A", BubbleStyle.SHOUT, "2"))
-        coordinator.onRemoteState(remote(Expression.SLEEPY, "B", BubbleStyle.WHISPER, "3"))
+        coordinator.onRemoteState(remote(Expression.ANGRY, "A", BubbleStyle.SHOUT, REVISION_2))
+        coordinator.onRemoteState(remote(Expression.SLEEPY, "B", BubbleStyle.WHISPER, REVISION_3))
         scheduler.advanceBy(1_200)
 
         assertEquals(Expression.SLEEPY, sink.states.last().expression)
         assertEquals("B", sink.states.last().bubbleText)
-        assertEquals("3", sink.states.last().revision)
+        assertEquals(REVISION_3, sink.states.last().revision)
     }
 
     @Test
@@ -92,7 +93,7 @@ class StateCoordinatorTest {
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
 
         coordinator.onLocalTap()
-        coordinator.onRemoteState(remote(expression = Expression.ANGRY, text = "A", revision = "1"))
+        coordinator.onRemoteState(remote(expression = Expression.ANGRY, text = "A", revision = REVISION_1))
 
         assertEquals(1, sink.states.size)
         assertEquals(Expression.HAPPY, sink.states.last().expression)
@@ -106,7 +107,7 @@ class StateCoordinatorTest {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
-        coordinator.onRemoteState(remote(expression = Expression.SLEEPY, text = "restored", revision = "1"))
+        coordinator.onRemoteState(remote(expression = Expression.SLEEPY, text = "restored", revision = REVISION_1))
 
         coordinator.onLocalTap()
         scheduler.advanceBy(1_200)
@@ -120,7 +121,7 @@ class StateCoordinatorTest {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
-        coordinator.onRemoteState(remote(expression = Expression.IDLE, revision = "1"))
+        coordinator.onRemoteState(remote(expression = Expression.IDLE, revision = REVISION_1))
 
         coordinator.onLocalTap()
         scheduler.advanceBy(1_000)
@@ -138,14 +139,14 @@ class StateCoordinatorTest {
         val scheduler = FakeScheduler()
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
 
-        coordinator.onRemoteState(remote(expression = Expression.ANGRY, text = "Five seconds", revision = "1"))
+        coordinator.onRemoteState(remote(expression = Expression.ANGRY, text = "Five seconds", revision = REVISION_1))
         scheduler.advanceBy(4_999)
         assertEquals("Five seconds", sink.states.last().bubbleText)
 
         scheduler.advanceBy(1)
         assertEquals(Expression.ANGRY, sink.states.last().expression)
         assertNull(sink.states.last().bubbleText)
-        assertEquals("1", sink.states.last().revision)
+        assertEquals(REVISION_1, sink.states.last().revision)
     }
 
     @Test
@@ -153,14 +154,14 @@ class StateCoordinatorTest {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
-        coordinator.onRemoteState(remote(text = "Visible", revision = "1"))
+        coordinator.onRemoteState(remote(text = "Visible", revision = REVISION_1))
         coordinator.onLocalTap()
 
         coordinator.close()
         scheduler.advanceBy(10_000)
 
         assertEquals(2, sink.states.size)
-        coordinator.onRemoteState(remote(expression = Expression.SLEEPY, revision = "2"))
+        coordinator.onRemoteState(remote(expression = Expression.SLEEPY, revision = REVISION_2))
         coordinator.onLocalTap()
         assertEquals(2, sink.states.size)
     }
@@ -170,9 +171,9 @@ class StateCoordinatorTest {
         val sink = RecordingSink()
         val coordinator = StateCoordinator(sink, FakeScheduler()) { Expression.HAPPY }
 
-        coordinator.onRemoteState(remote(Expression.SLEEPY, "new", BubbleStyle.NORMAL, "2026-07-29T12:00:03Z"))
-        coordinator.onRemoteState(remote(Expression.ANGRY, "old", BubbleStyle.SHOUT, "2026-07-29T12:00:02Z"))
-        coordinator.onRemoteState(remote(Expression.IDLE, "replay", BubbleStyle.WHISPER, "2026-07-29T12:00:03Z"))
+        coordinator.onRemoteState(remote(Expression.SLEEPY, "new", BubbleStyle.NORMAL, REVISION_3))
+        coordinator.onRemoteState(remote(Expression.ANGRY, "old", BubbleStyle.SHOUT, REVISION_2))
+        coordinator.onRemoteState(remote(Expression.IDLE, "replay", BubbleStyle.WHISPER, REVISION_3))
 
         assertEquals(1, sink.states.size)
         assertEquals(Expression.SLEEPY, sink.states.last().expression)
@@ -186,9 +187,9 @@ class StateCoordinatorTest {
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
 
         coordinator.onLocalTap()
-        coordinator.onRemoteState(remote(Expression.SLEEPY, "new", BubbleStyle.NORMAL, "2026-07-29T12:00:03Z"))
-        coordinator.onRemoteState(remote(Expression.ANGRY, "old", BubbleStyle.SHOUT, "2026-07-29T12:00:02Z"))
-        coordinator.onRemoteState(remote(Expression.IDLE, "replay", BubbleStyle.WHISPER, "2026-07-29T12:00:03Z"))
+        coordinator.onRemoteState(remote(Expression.SLEEPY, "new", BubbleStyle.NORMAL, REVISION_3))
+        coordinator.onRemoteState(remote(Expression.ANGRY, "old", BubbleStyle.SHOUT, REVISION_2))
+        coordinator.onRemoteState(remote(Expression.IDLE, "replay", BubbleStyle.WHISPER, REVISION_3))
         scheduler.advanceBy(1_200)
 
         assertEquals(Expression.SLEEPY, sink.states.last().expression)
@@ -196,17 +197,16 @@ class StateCoordinatorTest {
     }
 
     @Test
-    fun unorderedRevisionsUseArrivalOrderButRejectAnAlreadySeenRevision() {
+    fun malformedRevisionDoesNotRenderOrReplaceTheLastValidState() {
         val sink = RecordingSink()
         val coordinator = StateCoordinator(sink, FakeScheduler()) { Expression.HAPPY }
 
-        coordinator.onRemoteState(remote(Expression.SLEEPY, "first", BubbleStyle.NORMAL, "3"))
-        coordinator.onRemoteState(remote(Expression.ANGRY, "second", BubbleStyle.SHOUT, "2"))
-        coordinator.onRemoteState(remote(Expression.IDLE, "replay", BubbleStyle.WHISPER, "3"))
+        coordinator.onRemoteState(remote(Expression.SLEEPY, "valid", BubbleStyle.NORMAL, REVISION_1))
+        coordinator.onRemoteState(remote(Expression.ANGRY, "invalid", BubbleStyle.SHOUT, "not-an-iso-timestamp"))
 
-        assertEquals(2, sink.states.size)
-        assertEquals(Expression.ANGRY, sink.states.last().expression)
-        assertEquals("second", sink.states.last().bubbleText)
+        assertEquals(1, sink.states.size)
+        assertEquals(Expression.SLEEPY, sink.states.last().expression)
+        assertEquals("valid", sink.states.last().bubbleText)
     }
 
     @Test
@@ -214,7 +214,7 @@ class StateCoordinatorTest {
         val sink = RecordingSink()
         val scheduler = UnreliableScheduler()
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
-        coordinator.onRemoteState(remote(expression = Expression.IDLE, revision = "1"))
+        coordinator.onRemoteState(remote(expression = Expression.IDLE, revision = REVISION_1))
 
         coordinator.onLocalTap()
         coordinator.onLocalTap()
@@ -233,8 +233,8 @@ class StateCoordinatorTest {
         val scheduler = UnreliableScheduler()
         val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
 
-        coordinator.onRemoteState(remote(Expression.ANGRY, "A", BubbleStyle.SHOUT, "1"))
-        coordinator.onRemoteState(remote(Expression.SLEEPY, "B", BubbleStyle.WHISPER, "2"))
+        coordinator.onRemoteState(remote(Expression.ANGRY, "A", BubbleStyle.SHOUT, REVISION_1))
+        coordinator.onRemoteState(remote(Expression.SLEEPY, "B", BubbleStyle.WHISPER, REVISION_2))
         scheduler.runEvenIfCanceled(0)
 
         assertEquals(Expression.SLEEPY, sink.states.last().expression)
@@ -242,7 +242,7 @@ class StateCoordinatorTest {
 
         scheduler.runEvenIfCanceled(1)
         assertNull(sink.states.last().bubbleText)
-        assertEquals("2", sink.states.last().revision)
+        assertEquals(REVISION_2, sink.states.last().revision)
     }
 
     @Test
@@ -267,20 +267,20 @@ class StateCoordinatorTest {
         val scheduler = UnreliableScheduler()
         lateinit var coordinator: StateCoordinator
         val sink = ReentrantSink { state ->
-            if (state.revision == "1") {
-                coordinator.onRemoteState(remote(Expression.SLEEPY, "B", BubbleStyle.WHISPER, "2"))
+            if (state.revision == REVISION_1) {
+                coordinator.onRemoteState(remote(Expression.SLEEPY, "B", BubbleStyle.WHISPER, REVISION_2))
             }
         }
         coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
 
-        coordinator.onRemoteState(remote(Expression.ANGRY, "A", BubbleStyle.SHOUT, "1"))
+        coordinator.onRemoteState(remote(Expression.ANGRY, "A", BubbleStyle.SHOUT, REVISION_1))
         scheduler.runEvenIfCanceled(0)
 
         assertEquals(Expression.SLEEPY, sink.states.last().expression)
         assertEquals("B", sink.states.last().bubbleText)
         scheduler.runEvenIfCanceled(1)
         assertNull(sink.states.last().bubbleText)
-        assertEquals("2", sink.states.last().revision)
+        assertEquals(REVISION_2, sink.states.last().revision)
     }
 
     @Test
@@ -290,11 +290,32 @@ class StateCoordinatorTest {
         val sink = ReentrantSink { coordinator.close() }
         coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
 
-        coordinator.onRemoteState(remote(text = "visible", revision = "1"))
+        coordinator.onRemoteState(remote(text = "visible", revision = REVISION_1))
 
         assertEquals(0, scheduler.activeTaskCount)
         scheduler.runEvenIfCanceled(0)
         assertEquals(1, sink.states.size)
+    }
+
+    @Test
+    fun callsFromAnotherThreadAreRejectedAfterTheOwnerIsBound() {
+        val coordinator = StateCoordinator(RecordingSink(), FakeScheduler()) { Expression.HAPPY }
+        coordinator.onLocalTap()
+
+        val failure = invokeOnAnotherThread { coordinator.onLocalTap() }
+
+        assertTrue(failure is IllegalStateException)
+    }
+
+    @Test
+    fun scheduledCallbackFromAnotherThreadIsRejected() {
+        val scheduler = UnreliableScheduler()
+        val coordinator = StateCoordinator(RecordingSink(), scheduler) { Expression.HAPPY }
+        coordinator.onLocalTap()
+
+        val failure = invokeOnAnotherThread { scheduler.runEvenIfCanceled(0) }
+
+        assertTrue(failure is IllegalStateException)
     }
 
     private fun remote(
@@ -303,6 +324,20 @@ class StateCoordinatorTest {
         style: BubbleStyle = BubbleStyle.NORMAL,
         revision: String,
     ) = RemoteState(expression, text, style, revision)
+
+    private fun invokeOnAnotherThread(action: () -> Unit): Throwable? {
+        var failure: Throwable? = null
+        val thread = Thread {
+            try {
+                action()
+            } catch (error: Throwable) {
+                failure = error
+            }
+        }
+        thread.start()
+        thread.join()
+        return failure
+    }
 
     private class RecordingSink : UiSink {
         val states = mutableListOf<VisibleState>()
@@ -374,5 +409,11 @@ class StateCoordinatorTest {
             }
             nowMs = targetMs
         }
+    }
+
+    private companion object {
+        const val REVISION_1 = "2026-07-29T12:00:01Z"
+        const val REVISION_2 = "2026-07-29T12:00:02Z"
+        const val REVISION_3 = "2026-07-29T12:00:03Z"
     }
 }

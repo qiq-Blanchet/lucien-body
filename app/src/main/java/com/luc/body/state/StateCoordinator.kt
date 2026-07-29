@@ -2,15 +2,19 @@ package com.luc.body.state
 
 import java.time.Instant
 import java.time.format.DateTimeParseException
+import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * A single-thread state machine. The first public call binds its owner thread;
+ * all later public calls and delayed callbacks must use that same thread.
+ */
 class StateCoordinator(
     private val uiSink: UiSink,
     private val scheduler: DelayScheduler,
     private val localBubbleText: String = "Hi!",
     private val localExpression: () -> Expression,
 ) : AutoCloseable {
-    private val lock = Any()
-    private val recentUnorderedRevisions = LinkedHashSet<String>()
+    private val ownerThread = AtomicReference<Thread?>(null)
 
     private var closed = false
     private var localOverrideActive = false
@@ -23,40 +27,53 @@ class StateCoordinator(
     private var localOverrideTask: Cancelable? = null
     private var bubbleHideTask: Cancelable? = null
 
-    fun onRemoteState(state: RemoteState) = synchronized(lock) {
-        if (closed || !acceptsRevision(state.updatedAt)) return@synchronized
+    fun onRemoteState(state: RemoteState) {
+        requireOwnerThread()
+        if (closed) return
 
+        val instant = parseIsoRevision(state.updatedAt) ?: return
+        val newest = newestIsoRevision
+        if (newest != null && !instant.isAfter(newest)) return
+
+        newestIsoRevision = instant
         val normalized = state.copy(bubbleText = normalizeBubbleText(state.bubbleText))
         latestRemoteState = normalized
         if (localOverrideActive) {
             bufferedRemoteState = normalized
-            return@synchronized
+            return
         }
-        renderRemoteLocked(normalized)
+        renderRemote(normalized)
     }
 
-    fun onLocalTap() = synchronized(lock) {
-        if (closed) return@synchronized
+    fun onLocalTap() {
+        requireOwnerThread()
+        if (closed) return
 
-        cancelLocalOverrideLocked()
-        cancelBubbleHideLocked()
+        val previousLocalTask = invalidateLocalOverride()
+        val previousBubbleTask = invalidateBubbleHide()
         localOverrideActive = true
         localRevision += 1
         val revision = "local-$localRevision"
         val generation = ++localOverrideGeneration
         val task = scheduler.schedule(LOCAL_OVERRIDE_DURATION_MS) {
-            synchronized(lock) {
-                onLocalOverrideExpiredLocked(generation, revision)
-            }
+            onLocalOverrideExpired(generation, revision)
         }
         if (closed || generation != localOverrideGeneration || !localOverrideActive) {
             task.cancel()
-            return@synchronized
+            previousLocalTask?.cancel()
+            previousBubbleTask?.cancel()
+            return
         }
         localOverrideTask = task
+        previousLocalTask?.cancel()
+        previousBubbleTask?.cancel()
+        if (closed || generation != localOverrideGeneration || !localOverrideActive) return
+
+        val expression = localExpression()
+        if (closed || generation != localOverrideGeneration || !localOverrideActive) return
         uiSink.render(
             VisibleState(
-                expression = localExpression(),
+                expression = expression,
                 bubbleText = localBubbleText,
                 bubbleStyle = BubbleStyle.NORMAL,
                 revision = revision,
@@ -64,20 +81,25 @@ class StateCoordinator(
         )
     }
 
-    override fun close() = synchronized(lock) {
-        if (closed) return@synchronized
+    override fun close() {
+        requireOwnerThread()
+        if (closed) return
 
         closed = true
-        cancelLocalOverrideLocked()
-        cancelBubbleHideLocked()
+        val localTask = invalidateLocalOverride()
+        val bubbleTask = invalidateBubbleHide()
         bufferedRemoteState = null
+        localTask?.cancel()
+        bubbleTask?.cancel()
     }
 
-    private fun onLocalOverrideExpiredLocked(generation: Long, revision: String) {
+    private fun onLocalOverrideExpired(generation: Long, revision: String) {
+        requireOwnerThread()
         if (closed || generation != localOverrideGeneration || !localOverrideActive) return
 
         localOverrideTask = null
         localOverrideActive = false
+        localOverrideGeneration += 1
         val stateToRender = bufferedRemoteState ?: latestRemoteState
         bufferedRemoteState = null
         if (stateToRender == null) {
@@ -90,26 +112,30 @@ class StateCoordinator(
                 ),
             )
         } else {
-            renderRemoteLocked(stateToRender)
+            renderRemote(stateToRender)
         }
     }
 
-    private fun renderRemoteLocked(state: RemoteState) {
-        cancelBubbleHideLocked()
+    private fun renderRemote(state: RemoteState) {
+        if (closed || localOverrideActive) return
+
+        val previousBubbleTask = invalidateBubbleHide()
+        var renderGeneration = bubbleGeneration
         if (state.bubbleText != null) {
-            val generation = ++bubbleGeneration
-            val task = scheduler.schedule(REMOTE_BUBBLE_DURATION_MS) {
-                synchronized(lock) {
-                    onBubbleHideExpiredLocked(generation, state)
-                }
+            val bubbleTaskGeneration = ++bubbleGeneration
+            renderGeneration = bubbleTaskGeneration
+            val newBubbleTask = scheduler.schedule(REMOTE_BUBBLE_DURATION_MS) {
+                onBubbleHideExpired(bubbleTaskGeneration, state)
             }
-            if (closed || generation != bubbleGeneration || localOverrideActive) {
-                task.cancel()
+            if (closed || localOverrideActive || bubbleTaskGeneration != bubbleGeneration) {
+                newBubbleTask.cancel()
+                previousBubbleTask?.cancel()
                 return
             }
-            bubbleHideTask = task
+            bubbleHideTask = newBubbleTask
         }
-        if (closed) return
+        previousBubbleTask?.cancel()
+        if (closed || localOverrideActive || renderGeneration != bubbleGeneration) return
 
         uiSink.render(
             VisibleState(
@@ -121,7 +147,8 @@ class StateCoordinator(
         )
     }
 
-    private fun onBubbleHideExpiredLocked(generation: Long, state: RemoteState) {
+    private fun onBubbleHideExpired(generation: Long, state: RemoteState) {
+        requireOwnerThread()
         if (closed || generation != bubbleGeneration || localOverrideActive) return
 
         bubbleHideTask = null
@@ -136,36 +163,31 @@ class StateCoordinator(
         )
     }
 
-    private fun cancelLocalOverrideLocked() {
+    private fun invalidateLocalOverride(): Cancelable? {
         localOverrideGeneration += 1
-        localOverrideTask?.cancel()
+        val task = localOverrideTask
         localOverrideTask = null
+        return task
     }
 
-    private fun cancelBubbleHideLocked() {
+    private fun invalidateBubbleHide(): Cancelable? {
         bubbleGeneration += 1
-        bubbleHideTask?.cancel()
+        val task = bubbleHideTask
         bubbleHideTask = null
+        return task
     }
 
-    private fun acceptsRevision(revision: String): Boolean {
-        val isoRevision = parseIsoRevision(revision)
-        if (isoRevision != null) {
-            val latest = newestIsoRevision
-            if (latest != null && !isoRevision.isAfter(latest)) return false
-
-            newestIsoRevision = isoRevision
-            return true
-        }
-
-        if (!recentUnorderedRevisions.add(revision)) return false
-        if (recentUnorderedRevisions.size > MAX_RECENT_UNORDERED_REVISIONS) {
-            recentUnorderedRevisions.iterator().run {
-                next()
-                remove()
+    private fun requireOwnerThread() {
+        val current = Thread.currentThread()
+        val owner = ownerThread.get()
+        if (owner == null) {
+            check(ownerThread.compareAndSet(null, current) || ownerThread.get() === current) {
+                "StateCoordinator must be used from one owner thread"
             }
         }
-        return true
+        check(ownerThread.get() === current) {
+            "StateCoordinator must be used from one owner thread"
+        }
     }
 
     private fun parseIsoRevision(revision: String): Instant? = try {
@@ -183,6 +205,5 @@ class StateCoordinator(
         const val LOCAL_OVERRIDE_DURATION_MS = 1_200L
         const val REMOTE_BUBBLE_DURATION_MS = 5_000L
         const val MAX_BUBBLE_TEXT_LENGTH = 120
-        const val MAX_RECENT_UNORDERED_REVISIONS = 64
     }
 }

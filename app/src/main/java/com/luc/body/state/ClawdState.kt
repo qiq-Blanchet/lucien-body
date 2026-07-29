@@ -34,6 +34,10 @@ enum class BubbleStyle {
     }
 }
 
+/**
+ * A remote Supabase state row. [updatedAt] must be an ISO-8601 instant from
+ * Supabase's `updated_at` column; malformed values are ignored by [StateCoordinator].
+ */
 data class RemoteState(
     val expression: Expression,
     val bubbleText: String?,
