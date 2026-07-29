@@ -57,27 +57,25 @@
         │   │   ├── css/clawd.css
         │   │   └── clawd_sprites/{idle,happy,angry,sleepy}.svg
         │   ├── java/com/luc/body/
-        │   │   ├── AppIdentity.kt
         │   │   ├── MainActivity.kt
         │   │   ├── OverlayService.kt
         │   │   ├── gesture/{GestureClassifier,PetGestureController}.kt
         │   │   ├── network/{PollingLoop,SupabaseClient,SupabaseConfig}.kt
         │   │   ├── overlay/{OverlayController,OverlayGeometry,OverlayWindowSpec}.kt
         │   │   ├── state/{ClawdState,DelayScheduler,StateCoordinator}.kt
-        │   │   └── web/WebRenderer.kt
+        │   │   └── web/{JavascriptCommandBuilder,WebRenderer}.kt
         │   └── res/
         │       ├── drawable/ic_notification.xml
         │       ├── layout/activity_main.xml
         │       ├── values/{colors,strings,themes}.xml
         │       └── values-night/themes.xml
         └── test/java/com/luc/body/
-            ├── AppIdentityTest.kt
-            ├── RepositoryContractTest.kt
             ├── gesture/GestureClassifierTest.kt
             ├── network/{PollingLoop,SupabaseClientTest}.kt
             ├── overlay/{OverlayGeometryTest,OverlayWindowSpecTest}.kt
             ├── state/StateCoordinatorTest.kt
-            └── web/WebAssetContractTest.kt
+            └── web/JavascriptCommandBuilderTest.kt
+├── scripts/verify-apk-contract.sh
 ```
 
 ### Task 1: Buildable Android 16 Project Foundation
@@ -95,18 +93,16 @@
 - Create: `app/build.gradle.kts`
 - Create: `app/proguard-rules.pro`
 - Create: `app/src/main/AndroidManifest.xml`
-- Create: `app/src/main/java/com/luc/body/AppIdentity.kt`
 - Create: `app/src/main/java/com/luc/body/MainActivity.kt`
 - Create: `app/src/main/res/layout/activity_main.xml`
 - Create: `app/src/main/res/values/strings.xml`
 - Create: `app/src/main/res/values/colors.xml`
 - Create: `app/src/main/res/values/themes.xml`
 - Create: `app/src/main/res/values-night/themes.xml`
-- Test: `app/src/test/java/com/luc/body/AppIdentityTest.kt`
 
 **Interfaces:**
 - Consumes: No production interfaces; this task establishes the build.
-- Produces: `AppIdentity.label: String`, `AppIdentity.applicationId: String`, `AppIdentity.versionName: String`, generated `BuildConfig.SUPABASE_URL`, and generated `BuildConfig.SUPABASE_PUBLISHABLE_KEY`.
+- Produces: a buildable Android application with package `com.luc.body`, label `Luc`, version `0.1.0`, generated `BuildConfig.SUPABASE_URL`, and generated `BuildConfig.SUPABASE_PUBLISHABLE_KEY`.
 
 - [ ] **Step 1: Add the Gradle wrapper and pinned version catalog**
 
@@ -137,31 +133,9 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 
 Use `distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip` and verify the wrapper JAR comes from the official Gradle 8.13 distribution.
 
-- [ ] **Step 2: Add a failing identity test**
+- [ ] **Step 2: Configure the Android app**
 
-```kotlin
-package com.luc.body
-
-import org.junit.Assert.assertEquals
-import org.junit.Test
-
-class AppIdentityTest {
-    @Test
-    fun exposesFrozenApplicationIdentity() {
-        assertEquals("Luc", AppIdentity.label)
-        assertEquals("com.luc.body", AppIdentity.applicationId)
-        assertEquals("0.1.0", AppIdentity.versionName)
-    }
-}
-```
-
-- [ ] **Step 3: Run the test and confirm the missing production type**
-
-Run: `./gradlew :app:testDebugUnitTest --tests com.luc.body.AppIdentityTest`
-
-Expected: FAIL because `AppIdentity` does not exist.
-
-- [ ] **Step 4: Configure the Android app and implement the identity**
+This is a user-approved configuration exception to strict TDD: package identity, SDK levels, resources, and Gradle metadata are verified from the built APK rather than by tests that repeat source constants.
 
 Root plugin file:
 
@@ -232,21 +206,9 @@ dependencies {
 }
 ```
 
-Production identity:
-
-```kotlin
-package com.luc.body
-
-object AppIdentity {
-    const val label = "Luc"
-    const val applicationId = "com.luc.body"
-    const val versionName = "0.1.0"
-}
-```
-
 Create a minimal `ComponentActivity` that inflates `activity_main.xml`; the layout contains a title, permission status text, start button, and stop button with string resources only.
 
-- [ ] **Step 5: Add secure ignore rules**
+- [ ] **Step 3: Add secure ignore rules**
 
 `.gitignore` must exclude:
 
@@ -262,17 +224,22 @@ keystore.properties
 signing/
 ```
 
-- [ ] **Step 6: Verify the project foundation**
+- [ ] **Step 4: Build and verify the real APK**
 
 Run:
 
 ```bash
-./gradlew :app:testDebugUnitTest :app:assembleDebug
+./gradlew :app:assembleDebug
+APK=app/build/outputs/apk/debug/app-debug.apk
+test -f "$APK"
+test "$(apkanalyzer manifest application-id "$APK")" = "com.luc.body"
+apkanalyzer manifest print "$APK" | grep -F 'android:label="Luc"'
+apkanalyzer manifest target-sdk "$APK" | grep -Fx '36'
 ```
 
-Expected: PASS and `app/build/outputs/apk/debug/app-debug.apk` exists.
+Expected: the debug APK builds, exists, and reports the approved identity and target SDK from the packaged artifact.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add .gitignore build.gradle.kts settings.gradle.kts gradle.properties gradle gradlew gradlew.bat app
@@ -568,39 +535,37 @@ git commit -m "feat: add pet gesture and overlay geometry"
 - Create: `app/src/main/assets/clawd_sprites/happy.svg`
 - Create: `app/src/main/assets/clawd_sprites/angry.svg`
 - Create: `app/src/main/assets/clawd_sprites/sleepy.svg`
+- Create: `app/src/main/java/com/luc/body/web/JavascriptCommandBuilder.kt`
 - Create: `app/src/main/java/com/luc/body/web/WebRenderer.kt`
-- Test: `app/src/test/java/com/luc/body/web/WebAssetContractTest.kt`
+- Test: `app/src/test/java/com/luc/body/web/JavascriptCommandBuilderTest.kt`
 
 **Interfaces:**
 - Consumes: `UiSink`, `VisibleState`, `Expression`, `BubbleStyle`.
-- Produces: `class WebRenderer(petWebView: WebView, bubbleWebView: WebView) : UiSink`.
+- Produces: `object JavascriptCommandBuilder` and `class WebRenderer(petWebView: WebView, bubbleWebView: WebView) : UiSink`.
 
-- [ ] **Step 1: Write a failing asset contract test**
+- [ ] **Step 1: Write failing JavaScript command tests**
 
 ```kotlin
 @Test
-fun requiredWebAssetsExposeSafeEntryPoints() {
-    val assets = locateAssetsDirectory()
-    val pet = assets.resolve("clawd.html").readText()
-    val bubble = assets.resolve("bubble.html").readText()
-
-    assertTrue(pet.contains("window.LucPet.setExpression"))
-    assertTrue(bubble.contains("window.LucBubble.show"))
-    assertTrue(bubble.contains("textContent"))
-    assertFalse(bubble.contains("innerHTML"))
-    listOf("idle", "happy", "angry", "sleepy").forEach {
-        assertTrue(assets.resolve("clawd_sprites/$it.svg").isFile)
-    }
+fun bubbleCommandQuotesUntrustedValues() {
+    assertEquals(
+        """window.LucBubble.show("x\");alert(1);//","love","2026-07-29T00:00:00Z")""",
+        JavascriptCommandBuilder.showBubble(
+            text = """x");alert(1);//""",
+            style = "love",
+            revision = "2026-07-29T00:00:00Z",
+        ),
+    )
 }
 ```
 
-`locateAssetsDirectory()` checks `app/src/main/assets` and `src/main/assets`, selecting the first existing directory.
+Also cover expression fallback and the no-argument bubble-hide command.
 
-- [ ] **Step 2: Run the contract test**
+- [ ] **Step 2: Run the command tests**
 
-Run: `./gradlew :app:testDebugUnitTest --tests com.luc.body.web.WebAssetContractTest`
+Run: `./gradlew :app:testDebugUnitTest --tests com.luc.body.web.JavascriptCommandBuilderTest`
 
-Expected: FAIL because the assets do not exist.
+Expected: FAIL because `JavascriptCommandBuilder` does not exist.
 
 - [ ] **Step 3: Create the four consistent SVG states**
 
@@ -665,7 +630,9 @@ window.LucBubble = {
 
 `bubble--visible` runs one five-second CSS keyframe: fade in, hold, fade out. Body and HTML backgrounds are transparent.
 
-- [ ] **Step 6: Implement secure WebView configuration**
+- [ ] **Step 6: Implement the safe command builder and secure WebView configuration**
+
+Implement `JavascriptCommandBuilder` with `JSONObject.quote()` for every string argument. `WebRenderer` must consume this builder rather than assembling JavaScript inline.
 
 `WebRenderer` must:
 
@@ -675,7 +642,7 @@ window.LucBubble = {
 - use `WebViewAssetLoader` at `https://appassets.androidplatform.net/assets/`;
 - reject external navigation in `WebViewClient`;
 - never add a JavaScript interface;
-- use `JSONObject.quote()` for every string passed to `evaluateJavascript`.
+- pass only builder output to `evaluateJavascript`.
 
 `render()` invokes `LucPet.setExpression`; it invokes `LucBubble.hide` for null text and `LucBubble.show` otherwise.
 
@@ -684,14 +651,14 @@ window.LucBubble = {
 Run:
 
 ```bash
-./gradlew :app:testDebugUnitTest --tests com.luc.body.web.WebAssetContractTest :app:compileDebugKotlin
+./gradlew :app:testDebugUnitTest --tests com.luc.body.web.JavascriptCommandBuilderTest :app:compileDebugKotlin
 ```
 
 Expected: PASS.
 
 - [ ] **Step 8: Render and visually inspect assets**
 
-Open `clawd.html` and `bubble.html` using a local browser or Android WebView preview. Confirm identical crab identity, transparent backgrounds, no clipping, all four distinguishable states, and a complete five-second bubble cycle. Save one contact-sheet screenshot under `docs/qa/luc-mvp-svg-contact-sheet.png`.
+HTML, CSS, and SVG resources are a user-approved visual/configuration exception to forced unit tests. Open `clawd.html` and `bubble.html` using a real browser or Android WebView preview. Confirm identical crab identity, transparent backgrounds, no clipping, all four distinguishable states, and a complete five-second bubble cycle. Save one contact-sheet screenshot under `docs/qa/luc-mvp-svg-contact-sheet.png`.
 
 - [ ] **Step 9: Commit**
 
@@ -905,34 +872,34 @@ git commit -m "feat: add synchronized Luc overlay windows"
 - Create: `app/src/main/res/drawable/ic_notification.xml`
 - Modify: `app/src/main/res/layout/activity_main.xml`
 - Modify: `app/src/main/res/values/strings.xml`
-- Test: `app/src/test/java/com/luc/body/RepositoryContractTest.kt`
+- Create: `scripts/verify-apk-contract.sh`
 
 **Interfaces:**
 - Consumes: `OverlayController`, `StateCoordinator`, `SupabaseClient`, `PollingLoop`, `BuildConfig` values.
 - Produces: complete app start/stop lifecycle and notification behavior.
 
-- [ ] **Step 1: Write a failing manifest contract test**
+- [ ] **Step 1: Write a failing packaged-APK contract check**
 
-```kotlin
-@Test
-fun manifestDeclaresOnlyMvpSpecialPermissionsAndSpecialUseService() {
-    val manifest = locateRepositoryFile("app/src/main/AndroidManifest.xml").readText()
-    assertTrue(manifest.contains("android.permission.SYSTEM_ALERT_WINDOW"))
-    assertTrue(manifest.contains("android.permission.FOREGROUND_SERVICE_SPECIAL_USE"))
-    assertTrue(manifest.contains("android:foregroundServiceType=\"specialUse\""))
-    assertTrue(manifest.contains("android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"))
-    assertFalse(manifest.contains("PACKAGE_USAGE_STATS"))
-    assertFalse(manifest.contains("RECEIVE_BOOT_COMPLETED"))
-}
+Create `scripts/verify-apk-contract.sh`. It must inspect a supplied APK with Android SDK tools, not read source text. Check:
+
+- application ID `com.luc.body`, target SDK 36, and label `Luc`;
+- `SYSTEM_ALERT_WINDOW`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`, `POST_NOTIFICATIONS`, and `INTERNET`;
+- absence of `PACKAGE_USAGE_STATS` and `RECEIVE_BOOT_COMPLETED`;
+- packaged service `.OverlayService` is not exported and uses `specialUse`;
+- the packaged special-use subtype property exists;
+- cleartext traffic is disabled.
+
+The script exits non-zero on any mismatch and prints no configuration values.
+
+```bash
+./scripts/verify-apk-contract.sh app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Also assert the service is `android:exported="false"` and cleartext traffic is disabled.
+- [ ] **Step 2: Run the packaged contract against the pre-integration APK**
 
-- [ ] **Step 2: Run the repository contract**
+Run: `./gradlew :app:assembleDebug && ./scripts/verify-apk-contract.sh app/build/outputs/apk/debug/app-debug.apk`
 
-Run: `./gradlew :app:testDebugUnitTest --tests com.luc.body.RepositoryContractTest`
-
-Expected: FAIL until the final manifest contract exists.
+Expected: FAIL because the foreground-service manifest contract is not implemented yet.
 
 - [ ] **Step 3: Implement the manifest**
 
@@ -1029,6 +996,7 @@ Run:
 
 ```bash
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+./scripts/verify-apk-contract.sh app/build/outputs/apk/debug/app-debug.apk
 ```
 
 Expected: PASS.
@@ -1036,7 +1004,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add app/src/main/AndroidManifest.xml app/src/main/java/com/luc/body/MainActivity.kt app/src/main/java/com/luc/body/OverlayService.kt app/src/main/res app/src/test/java/com/luc/body/RepositoryContractTest.kt
+git add app/src/main/AndroidManifest.xml app/src/main/java/com/luc/body/MainActivity.kt app/src/main/java/com/luc/body/OverlayService.kt app/src/main/res scripts/verify-apk-contract.sh
 git commit -m "feat: run Luc as an Android foreground overlay"
 ```
 
@@ -1046,37 +1014,15 @@ git commit -m "feat: run Luc as an Android foreground overlay"
 - Create: `.github/workflows/build.yml`
 - Modify: `app/build.gradle.kts`
 - Modify: `README.md`
-- Modify: `app/src/test/java/com/luc/body/RepositoryContractTest.kt`
+- Modify: `scripts/verify-apk-contract.sh`
 
 **Interfaces:**
 - Consumes: all prior tasks and six GitHub Actions secrets.
 - Produces: signed `Luc-0.1.0-release.apk` artifact on every push to `main`.
 
-- [ ] **Step 1: Add failing repository release-contract tests**
+- [ ] **Step 1: Add release signing configuration**
 
-```kotlin
-@Test
-fun workflowBuildsAndUploadsSignedRelease() {
-    val workflow = locateRepositoryFile(".github/workflows/build.yml").readText()
-    assertTrue(workflow.contains("push:"))
-    assertTrue(workflow.contains("main"))
-    assertTrue(workflow.contains("testDebugUnitTest"))
-    assertTrue(workflow.contains("lintRelease"))
-    assertTrue(workflow.contains("assembleRelease"))
-    assertTrue(workflow.contains("actions/upload-artifact"))
-    assertFalse(workflow.contains("sb_publishable_"))
-}
-```
-
-Add README assertions for all six secret names and Android 16 installation instructions.
-
-- [ ] **Step 2: Run the release contract**
-
-Run: `./gradlew :app:testDebugUnitTest --tests com.luc.body.RepositoryContractTest`
-
-Expected: FAIL because workflow and operator instructions are absent.
-
-- [ ] **Step 3: Add release signing configuration**
+Workflow YAML and operator documentation are a user-approved configuration/documentation exception to forced unit tests. Validate the workflow with `actionlint`, validate the actual APK with Android SDK signing/manifest tools, and manually review README completeness.
 
 `app/build.gradle.kts` reads these environment variables without printing them:
 
@@ -1119,7 +1065,7 @@ android {
 }
 ```
 
-- [ ] **Step 4: Create the workflow**
+- [ ] **Step 2: Create and statically validate the workflow**
 
 Workflow requirements:
 
@@ -1143,11 +1089,12 @@ Decode `ANDROID_KEYSTORE_BASE64` into `${RUNNER_TEMP}/luc-release.jks`, export `
 yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
   "platforms;android-36" "build-tools;36.0.0"
 ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease
+./scripts/verify-apk-contract.sh app/build/outputs/apk/release/app-release.apk
 ```
 
-Copy the generated APK to `Luc-0.1.0-release.apk`, run `keytool -printcert -jarfile` to prove it is signed without printing passwords, and upload the renamed file with 30-day retention.
+Copy the generated APK to `Luc-0.1.0-release.apk`, run both `apksigner verify --verbose` and `keytool -printcert -jarfile` to prove it is signed without printing passwords, and upload the renamed file with 30-day retention. Pin or install `actionlint` in CI and run it against `.github/workflows/build.yml`.
 
-- [ ] **Step 5: Document setup and operation**
+- [ ] **Step 3: Document setup and operation**
 
 README must include:
 
@@ -1162,12 +1109,14 @@ README must include:
 
 Use placeholders such as `YOUR_SUPABASE_URL` and never real values.
 
-- [ ] **Step 6: Run the complete pre-push verification**
+- [ ] **Step 4: Run the complete pre-push verification**
 
 Run:
 
 ```bash
 ./gradlew --no-daemon clean testDebugUnitTest lintRelease assembleDebug
+./scripts/verify-apk-contract.sh app/build/outputs/apk/debug/app-debug.apk
+actionlint .github/workflows/build.yml
 ```
 
 Expected: PASS.
@@ -1176,15 +1125,21 @@ If a release keystore is available locally through environment variables, also r
 
 ```bash
 ./gradlew --no-daemon assembleRelease
+./scripts/verify-apk-contract.sh app/build/outputs/apk/release/app-release.apk
+apksigner verify --verbose app/build/outputs/apk/release/app-release.apk
 keytool -printcert -jarfile app/build/outputs/apk/release/app-release.apk
 ```
 
-Expected: release build PASS and certificate details present.
+Expected: release build PASS, packaged contract PASS, signature verification PASS, and certificate details present.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Push the branch and verify the real GitHub Actions run**
+
+Push the implementation branch, trigger the workflow, and inspect the completed Actions run. Download its artifact and rerun `scripts/verify-apk-contract.sh` plus `apksigner verify --verbose` against the downloaded `Luc-0.1.0-release.apk`. This real run is the release-workflow acceptance test.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add .github/workflows/build.yml app/build.gradle.kts README.md app/src/test/java/com/luc/body/RepositoryContractTest.kt
+git add .github/workflows/build.yml app/build.gradle.kts README.md scripts/verify-apk-contract.sh
 git commit -m "ci: build signed Luc release APK"
 ```
 
@@ -1219,4 +1174,3 @@ git commit -m "ci: build signed Luc release APK"
 | Two synchronized touch/pass-through windows | Task 6 |
 | Permission guidance and foreground service | Task 7 |
 | Signed release APK and operator documentation | Task 8 |
-
