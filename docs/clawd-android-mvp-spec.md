@@ -14,6 +14,54 @@
 
 ## 架构
 
+```
+AI（外部） ──写入──→ Supabase clawd_state 表 ──Realtime/轮询──→ APK（读取并渲染）
+APK ──写入──→ Supabase clawd_events 表 ──外部读取──→ AI（感知用户行为）
+```
+
+## Supabase 配置（已完成）
+
+- Project URL: `SUPABASE_URL`
+- anon key: `SUPABASE_PUBLISHABLE_KEY`
+
+### 表结构
+
+**clawd_state**（AI 写，桌宠读）：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | UUID | 主键 |
+| expression | TEXT | 表情状态：idle/happy/angry/sleepy/shy/excited/sad |
+| bubble_text | TEXT | 气泡文字，null 时不显示气泡 |
+| bubble_style | TEXT | normal/whisper/shout/love |
+| valence | FLOAT | 情绪效价 0-1 |
+| arousal | FLOAT | 情绪唤醒度 0-1 |
+| heat | INT | 热度值 0-100 |
+| updated_at | TIMESTAMPTZ | 更新时间 |
+
+**clawd_events**（桌宠写，AI 读）：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | UUID | 主键 |
+| event_type | TEXT | tap/double_tap/long_press/fling/app_switch/screenshot/charging/low_battery |
+| payload | JSONB | 附加数据，如 {"app": "com.tencent.mm"} |
+| created_at | TIMESTAMPTZ | 事件时间 |
+
+**clawd_config**（配置表）：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| key | TEXT | 配置键 |
+| value | JSONB | 配置值 |
+| updated_at | TIMESTAMPTZ | 更新时间 |
+
+## 技术栈
+
+- 语言：Kotlin
+- 最低版本：Android 8.0 (SDK 26)，targetSdk 34
+- 悬浮窗：WindowManager + TYPE_APPLICATION_OVERLAY
+- 渲染：WebView + 本地 HTML/SVG/CSS 动画
+- 后端通信：Supabase REST API（OkHttp）+ Realtime WebSocket（备用 5 秒轮询 fallback）
+- 构建：Gradle + GitHub Actions CI/CD
+
 ## 模块规格
 
 ### 1. 悬浮窗服务 (OverlayService)
@@ -129,6 +177,114 @@ WebView 与 Native 通信：
 - 异步非阻塞，失败静默重试一次
 
 **HTTP 请求头：**
+```
+apikey: SUPABASE_PUBLISHABLE_KEY
+Authorization: Bearer SUPABASE_PUBLISHABLE_KEY
+Content-Type: application/json
+```
+
+**读取示例：**
+GET SUPABASE_URL/rest/v1/clawd_state?select=*&order=updated_at.desc&limit=1
+
+**写入示例：**
+POST SUPABASE_URL/rest/v1/clawd_events
+Body: {"event_type": "tap", "payload": {}}
+
+### 8. 前台保活
+
+- 前台服务 + 常驻通知
+- 通知内容可更新（每小时换一句碎碎念，从 clawd_config 读取词池）
+- 引导用户设置电池白名单（华为/小米等 ROM 需要）
+- 通知更新频率：最多 1 次/小时（Android 8.1+ 限流）
+
+### 9. 自言自语系统
+
+- idle 状态下随机触发自言自语气泡
+- 间隔：3-8 分钟随机
+- 词池从 clawd_config 表读取（key="idle_monologue"）
+- 如果词池为空使用本地默认词池
+- 时段感知：深夜/白天/午饭 使用不同词池
+
+### 10. 孤独递进系统
+
+无用户交互时递进变化：
+| 时间 | 状态 | 表现 |
+|------|------|------|
+| 5 分钟 | 偷看 | 眼睛转向一个方向 |
+| 10 分钟 | 无聊 | 吹泡泡动画 |
+| 15 分钟 | 搬东西 | 来回走动 |
+| 20 分钟 | 打瞌睡 | 半闭眼 + 点头 |
+| 30 分钟 | 睡着 | 完全闭眼 + zzz |
+任何交互重置计时器。
+
+### 11. 权限清单
+
+```xml
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+<uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"/>
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.VIBRATE"/>
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+```
+
+### 12. 项目结构
+
+```
+app/src/main/
+├── java/com/clawd/pet/
+│   ├── MainActivity.kt          // 权限引导 + 启动服务
+│   ├── OverlayService.kt        // 核心悬浮窗服务
+│   ├── gesture/
+│   │   └── GestureDetector.kt   // 手势识别
+│   ├── sense/
+│   │   ├── AppDetector.kt       // 前台 app 检测
+│   │   ├── ScreenshotDetector.kt // 截图检测
+│   │   └── BatteryDetector.kt   // 充电检测
+│   ├── network/
+│   │   ├── SupabaseClient.kt    // HTTP 通信
+│   │   └── RealtimeClient.kt    // WebSocket 订阅
+│   ├── bubble/
+│   │   └── BubbleManager.kt     // 气泡逻辑
+│   └── behavior/
+│       ├── IdleBehavior.kt      // 自言自语 + 孤独递进
+│       └── TimePeriod.kt        // 时段感知
+├── assets/
+│   ├── clawd.html               // WebView 主页面
+│   └── clawd_sprites/           // SVG 素材
+└── res/
+    └── ...
+```
+
+### 13. GitHub Actions CI/CD
+
+在仓库根目录创建 .github/workflows/build.yml：
+- 触发：push to main
+- 步骤：checkout → setup JDK 17 → decode keystore → gradle assembleRelease → upload APK artifact
+- keystore 存 GitHub Secrets（base64 编码）
+
+### 14. MVP 优先级
+
+**第一版（必须有）：**
+- 悬浮窗 + WebView 渲染
+- clawd SVG（至少 idle/happy/angry/sleepy 四个表情）
+- 拖拽
+- 单击触发本地随机反应
+- 气泡显示
+- Supabase 轮询读取 clawd_state
+- Supabase POST 上报手势事件
+- 前台保活
+
+**第二版（后续加）：**
+- Realtime WebSocket
+- 前台 App 检测
+- 截图检测
+- 充电检测
+- 孤独递进
+- 自言自语词池
+- 通知碎碎念
+- 时段感知
 
 ## 当前交付约定
 
