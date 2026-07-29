@@ -9,10 +9,20 @@ class PetGestureController(
     private val onTap: () -> Unit,
 ) : View.OnTouchListener {
     override fun onTouch(view: View, event: MotionEvent): Boolean {
-        val result = when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> classifier.onDown(event.rawX, event.rawY, event.eventTime)
-            MotionEvent.ACTION_MOVE -> classifier.onMove(event.rawX, event.rawY, event.eventTime)
-            MotionEvent.ACTION_UP -> classifier.onUp(event.rawX, event.rawY, event.eventTime)
+        onPointerEvent(event.actionMasked, event.rawX, event.rawY, event.eventTime)
+        return true
+    }
+
+    internal fun onPointerEvent(
+        actionMasked: Int,
+        rawX: Float,
+        rawY: Float,
+        eventTimeMs: Long,
+    ): GestureResult {
+        val result = when (actionMasked) {
+            MotionEvent.ACTION_DOWN -> classifier.onDown(rawX, rawY, eventTimeMs)
+            MotionEvent.ACTION_MOVE -> classifier.onMove(rawX, rawY, eventTimeMs)
+            MotionEvent.ACTION_UP -> classifier.onUp(rawX, rawY, eventTimeMs)
             MotionEvent.ACTION_CANCEL -> classifier.onCancel()
             else -> GestureResult.None
         }
@@ -21,6 +31,6 @@ class PetGestureController(
             GestureResult.Tap -> onTap()
             GestureResult.None, GestureResult.DragEnd -> Unit
         }
-        return true
+        return result
     }
 }

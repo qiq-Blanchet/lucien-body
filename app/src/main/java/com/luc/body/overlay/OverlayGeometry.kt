@@ -14,6 +14,10 @@ data class OverlayPlacementPx(
     val petY: Int,
     val bubbleX: Int,
     val bubbleY: Int,
+    /**
+     * The preferred direction selected before independent bubble Y clamping.
+     * It does not guarantee that an undersized safe bound can avoid overlap.
+     */
     val bubbleBelowPet: Boolean,
 )
 

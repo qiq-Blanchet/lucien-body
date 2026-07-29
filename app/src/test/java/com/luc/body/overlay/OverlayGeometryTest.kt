@@ -50,12 +50,13 @@ class OverlayGeometryTest {
     }
 
     @Test
-    fun tinySafeBoundsNeverCreateANegativeClampRange() {
+    fun bubbleInBoundsTooSmallAboveAndBelowClampsToTheTopMostSafeCoordinate() {
         val placement = geometry.movePet(0, 0, SafeBoundsPx(100, 200, 200, 250))
 
         assertEquals(100, placement.petX)
         assertEquals(200, placement.petY)
         assertEquals(100, placement.bubbleX)
         assertEquals(200, placement.bubbleY)
+        assertTrue(placement.bubbleBelowPet)
     }
 }

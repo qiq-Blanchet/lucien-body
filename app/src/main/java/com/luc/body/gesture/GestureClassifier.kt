@@ -39,16 +39,25 @@ class GestureClassifier(
 
     fun onMove(rawX: Float, rawY: Float, eventTimeMs: Long): GestureResult {
         val activeGesture = gesture ?: return GestureResult.None
-        val movedBeyondSlop = activeGesture.movedBeyondSlop ||
-            distanceFromDown(activeGesture, rawX, rawY) >= touchSlopPx
-        val result = GestureResult.Move(
-            deltaX = rawX - activeGesture.lastX,
-            deltaY = rawY - activeGesture.lastY,
-        )
+        if (!activeGesture.dragStarted) {
+            if (distanceFromDown(activeGesture, rawX, rawY) < touchSlopPx) {
+                return GestureResult.None
+            }
+            gesture = activeGesture.copy(
+                lastX = rawX,
+                lastY = rawY,
+                dragStarted = true,
+            )
+            return GestureResult.Move(
+                deltaX = rawX - activeGesture.downX,
+                deltaY = rawY - activeGesture.downY,
+            )
+        }
+
+        val result = GestureResult.Move(rawX - activeGesture.lastX, rawY - activeGesture.lastY)
         gesture = activeGesture.copy(
             lastX = rawX,
             lastY = rawY,
-            movedBeyondSlop = movedBeyondSlop,
         )
         return result
     }
@@ -58,11 +67,10 @@ class GestureClassifier(
         gesture = null
 
         val distance = distanceFromDown(activeGesture, rawX, rawY)
-        val durationMs = eventTimeMs - activeGesture.downTimeMs
         return if (
-            !activeGesture.movedBeyondSlop &&
+            !activeGesture.dragStarted &&
             distance < touchSlopPx &&
-            durationMs < tapTimeoutMs
+            isWithinTapTimeout(eventTimeMs, activeGesture.downTimeMs)
         ) {
             GestureResult.Tap
         } else {
@@ -82,13 +90,24 @@ class GestureClassifier(
             (rawY - activeGesture.downY).toDouble(),
         ).toFloat()
 
+    private fun isWithinTapTimeout(eventTimeMs: Long, downTimeMs: Long): Boolean {
+        if (eventTimeMs < downTimeMs) return false
+
+        val largestTapDurationMs = tapTimeoutMs - 1
+        return if (downTimeMs > Long.MAX_VALUE - largestTapDurationMs) {
+            true
+        } else {
+            eventTimeMs <= downTimeMs + largestTapDurationMs
+        }
+    }
+
     private data class ActiveGesture(
         val downX: Float,
         val downY: Float,
         val lastX: Float,
         val lastY: Float,
         val downTimeMs: Long,
-        val movedBeyondSlop: Boolean = false,
+        val dragStarted: Boolean = false,
     )
 
     companion object {
