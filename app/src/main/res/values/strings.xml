@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Luc</string>
+    <string name="app_title">Luc</string>
+    <string name="permission_status_placeholder">Permission status will appear here.</string>
+    <string name="start_button">Start Luc</string>
+    <string name="stop_button">Stop Luc</string>
+</resources>
