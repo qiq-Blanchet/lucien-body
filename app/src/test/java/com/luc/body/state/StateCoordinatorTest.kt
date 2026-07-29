@@ -165,6 +165,138 @@ class StateCoordinatorTest {
         assertEquals(2, sink.states.size)
     }
 
+    @Test
+    fun olderIsoRevisionAndNewerReplayDoNotReplaceNewerRemoteState() {
+        val sink = RecordingSink()
+        val coordinator = StateCoordinator(sink, FakeScheduler()) { Expression.HAPPY }
+
+        coordinator.onRemoteState(remote(Expression.SLEEPY, "new", BubbleStyle.NORMAL, "2026-07-29T12:00:03Z"))
+        coordinator.onRemoteState(remote(Expression.ANGRY, "old", BubbleStyle.SHOUT, "2026-07-29T12:00:02Z"))
+        coordinator.onRemoteState(remote(Expression.IDLE, "replay", BubbleStyle.WHISPER, "2026-07-29T12:00:03Z"))
+
+        assertEquals(1, sink.states.size)
+        assertEquals(Expression.SLEEPY, sink.states.last().expression)
+        assertEquals("new", sink.states.last().bubbleText)
+    }
+
+    @Test
+    fun olderIsoRevisionAndNewerReplayDoNotReplaceBufferedRemoteState() {
+        val sink = RecordingSink()
+        val scheduler = FakeScheduler()
+        val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
+
+        coordinator.onLocalTap()
+        coordinator.onRemoteState(remote(Expression.SLEEPY, "new", BubbleStyle.NORMAL, "2026-07-29T12:00:03Z"))
+        coordinator.onRemoteState(remote(Expression.ANGRY, "old", BubbleStyle.SHOUT, "2026-07-29T12:00:02Z"))
+        coordinator.onRemoteState(remote(Expression.IDLE, "replay", BubbleStyle.WHISPER, "2026-07-29T12:00:03Z"))
+        scheduler.advanceBy(1_200)
+
+        assertEquals(Expression.SLEEPY, sink.states.last().expression)
+        assertEquals("new", sink.states.last().bubbleText)
+    }
+
+    @Test
+    fun unorderedRevisionsUseArrivalOrderButRejectAnAlreadySeenRevision() {
+        val sink = RecordingSink()
+        val coordinator = StateCoordinator(sink, FakeScheduler()) { Expression.HAPPY }
+
+        coordinator.onRemoteState(remote(Expression.SLEEPY, "first", BubbleStyle.NORMAL, "3"))
+        coordinator.onRemoteState(remote(Expression.ANGRY, "second", BubbleStyle.SHOUT, "2"))
+        coordinator.onRemoteState(remote(Expression.IDLE, "replay", BubbleStyle.WHISPER, "3"))
+
+        assertEquals(2, sink.states.size)
+        assertEquals(Expression.ANGRY, sink.states.last().expression)
+        assertEquals("second", sink.states.last().bubbleText)
+    }
+
+    @Test
+    fun canceledLocalTimeoutCannotEndANewerOverride() {
+        val sink = RecordingSink()
+        val scheduler = UnreliableScheduler()
+        val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
+        coordinator.onRemoteState(remote(expression = Expression.IDLE, revision = "1"))
+
+        coordinator.onLocalTap()
+        coordinator.onLocalTap()
+        scheduler.runEvenIfCanceled(0)
+
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
+        assertEquals("local-2", sink.states.last().revision)
+
+        scheduler.runEvenIfCanceled(1)
+        assertEquals(Expression.IDLE, sink.states.last().expression)
+    }
+
+    @Test
+    fun canceledBubbleTimeoutCannotHideANewerRemoteBubble() {
+        val sink = RecordingSink()
+        val scheduler = UnreliableScheduler()
+        val coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
+
+        coordinator.onRemoteState(remote(Expression.ANGRY, "A", BubbleStyle.SHOUT, "1"))
+        coordinator.onRemoteState(remote(Expression.SLEEPY, "B", BubbleStyle.WHISPER, "2"))
+        scheduler.runEvenIfCanceled(0)
+
+        assertEquals(Expression.SLEEPY, sink.states.last().expression)
+        assertEquals("B", sink.states.last().bubbleText)
+
+        scheduler.runEvenIfCanceled(1)
+        assertNull(sink.states.last().bubbleText)
+        assertEquals("2", sink.states.last().revision)
+    }
+
+    @Test
+    fun reentrantLocalTapCannotLeaveTheOuterTimeoutActive() {
+        val scheduler = UnreliableScheduler()
+        lateinit var coordinator: StateCoordinator
+        val sink = ReentrantSink { state ->
+            if (state.revision == "local-1") coordinator.onLocalTap()
+        }
+        coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
+
+        coordinator.onLocalTap()
+        scheduler.runEvenIfCanceled(0)
+
+        assertEquals("local-2", sink.states.last().revision)
+        scheduler.runEvenIfCanceled(1)
+        assertEquals("local-2-expired", sink.states.last().revision)
+    }
+
+    @Test
+    fun reentrantNewerRemoteStateCancelsTheOuterBubbleTimeout() {
+        val scheduler = UnreliableScheduler()
+        lateinit var coordinator: StateCoordinator
+        val sink = ReentrantSink { state ->
+            if (state.revision == "1") {
+                coordinator.onRemoteState(remote(Expression.SLEEPY, "B", BubbleStyle.WHISPER, "2"))
+            }
+        }
+        coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
+
+        coordinator.onRemoteState(remote(Expression.ANGRY, "A", BubbleStyle.SHOUT, "1"))
+        scheduler.runEvenIfCanceled(0)
+
+        assertEquals(Expression.SLEEPY, sink.states.last().expression)
+        assertEquals("B", sink.states.last().bubbleText)
+        scheduler.runEvenIfCanceled(1)
+        assertNull(sink.states.last().bubbleText)
+        assertEquals("2", sink.states.last().revision)
+    }
+
+    @Test
+    fun closeDuringRenderLeavesNoActiveTimer() {
+        val scheduler = UnreliableScheduler()
+        lateinit var coordinator: StateCoordinator
+        val sink = ReentrantSink { coordinator.close() }
+        coordinator = StateCoordinator(sink, scheduler) { Expression.HAPPY }
+
+        coordinator.onRemoteState(remote(text = "visible", revision = "1"))
+
+        assertEquals(0, scheduler.activeTaskCount)
+        scheduler.runEvenIfCanceled(0)
+        assertEquals(1, sink.states.size)
+    }
+
     private fun remote(
         expression: Expression = Expression.ANGRY,
         text: String? = null,
@@ -177,6 +309,39 @@ class StateCoordinatorTest {
 
         override fun render(state: VisibleState) {
             states += state
+        }
+    }
+
+    private class ReentrantSink(
+        private val onRender: (VisibleState) -> Unit,
+    ) : UiSink {
+        val states = mutableListOf<VisibleState>()
+
+        override fun render(state: VisibleState) {
+            states += state
+            onRender(state)
+        }
+    }
+
+    private class UnreliableScheduler : DelayScheduler {
+        private data class Scheduled(
+            val action: () -> Unit,
+            var canceled: Boolean = false,
+        )
+
+        private val scheduled = mutableListOf<Scheduled>()
+
+        val activeTaskCount: Int
+            get() = scheduled.count { !it.canceled }
+
+        override fun schedule(delayMs: Long, action: () -> Unit): Cancelable {
+            val task = Scheduled(action)
+            scheduled += task
+            return Cancelable { task.canceled = true }
+        }
+
+        fun runEvenIfCanceled(index: Int) {
+            scheduled[index].action()
         }
     }
 
