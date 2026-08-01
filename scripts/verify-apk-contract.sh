@@ -40,30 +40,69 @@ grep -q "^package: name='com.luc.body'" "$badging" || fail "application ID misma
 grep -q "targetSdkVersion:'36'" "$badging" || fail "target SDK mismatch"
 grep -q "application-label:'Luc'" "$badging" || fail "application label mismatch"
 
-permission_count=0
-while IFS= read -r permission; do
-  permission=${permission#uses-permission: name=\'}
+system_alert_count=0
+foreground_service_count=0
+special_use_count=0
+notification_count=0
+internet_count=0
+dynamic_receiver_count=0
+while IFS= read -r permission_line; do
+  permission=${permission_line#*: name=\'}
   permission=${permission%%\'*}
   case "$permission" in
     com.luc.body.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION)
       # AndroidX adds this package-private permission during manifest merging.
+      dynamic_receiver_count=$((dynamic_receiver_count + 1))
       ;;
-    android.permission.SYSTEM_ALERT_WINDOW|android.permission.FOREGROUND_SERVICE|android.permission.FOREGROUND_SERVICE_SPECIAL_USE|android.permission.POST_NOTIFICATIONS|android.permission.INTERNET)
-      permission_count=$((permission_count + 1))
-      ;;
+    android.permission.SYSTEM_ALERT_WINDOW) system_alert_count=$((system_alert_count + 1)) ;;
+    android.permission.FOREGROUND_SERVICE) foreground_service_count=$((foreground_service_count + 1)) ;;
+    android.permission.FOREGROUND_SERVICE_SPECIAL_USE) special_use_count=$((special_use_count + 1)) ;;
+    android.permission.POST_NOTIFICATIONS) notification_count=$((notification_count + 1)) ;;
+    android.permission.INTERNET) internet_count=$((internet_count + 1)) ;;
     *) fail "permission contract mismatch" ;;
   esac
-done < <(grep "^uses-permission:" "$badging")
-[ "$permission_count" -eq 5 ] || fail "permission contract mismatch"
+done < <(grep "^uses-permission" "$badging" || true)
+[ "$system_alert_count" -eq 1 ] || fail "permission contract mismatch"
+[ "$foreground_service_count" -eq 1 ] || fail "permission contract mismatch"
+[ "$special_use_count" -eq 1 ] || fail "permission contract mismatch"
+[ "$notification_count" -eq 1 ] || fail "permission contract mismatch"
+[ "$internet_count" -eq 1 ] || fail "permission contract mismatch"
+[ "$dynamic_receiver_count" -le 1 ] || fail "permission contract mismatch"
 
 service_block=$(awk '
-  /^      E: service / { if (seen) exit; seen = 1; print; next }
-  seen { print }
-  seen && /^      E: (activity|receiver|provider) / { exit }
+  function indentation(line) {
+    match(line, /[^[:space:]]/)
+    return RSTART - 1
+  }
+  function is_overlay_service(block) {
+    return block ~ /android:name.*com\.luc\.body\.OverlayService/
+  }
+  /^[[:space:]]*E: / {
+    current_indent = indentation($0)
+    if (active && current_indent <= service_indent) {
+      if (is_overlay_service(block)) {
+        printf "%s", block
+        found = 1
+        exit
+      }
+      active = 0
+      block = ""
+    }
+    if ($0 ~ /^[[:space:]]*E: service /) {
+      active = 1
+      service_indent = current_indent
+      block = $0 ORS
+      next
+    }
+  }
+  active { block = block $0 ORS }
+  END {
+    if (!found && active && is_overlay_service(block)) printf "%s", block
+  }
 ' "$manifest")
 printf '%s\n' "$service_block" | grep -q 'android:name.*OverlayService' || fail "OverlayService missing"
-printf '%s\n' "$service_block" | grep -Eq 'android:exported.*0x0|android:exported.*false' || fail "OverlayService export mismatch"
-printf '%s\n' "$service_block" | grep -Eq 'android:foregroundServiceType.*(specialUse|0x40000000)' || fail "OverlayService type mismatch"
+printf '%s\n' "$service_block" | grep -Eq 'android:exported\([^)]*\)=\(type 0x12\)0x0[[:space:]]*$' || fail "OverlayService export mismatch"
+printf '%s\n' "$service_block" | grep -Eq 'android:foregroundServiceType\([^)]*\)=\(type 0x11\)0x40000000[[:space:]]*$' || fail "OverlayService type mismatch"
 printf '%s\n' "$service_block" | grep -q 'android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE' || fail "OverlayService subtype missing"
 grep -Eq 'android:usesCleartextTraffic.*0x0|android:usesCleartextTraffic.*false' "$manifest" || fail "cleartext traffic is enabled"
 
