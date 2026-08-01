@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/clawd.css">
+</head>
+<body>
+  <img id="pet" class="pet pet--idle" src="clawd_sprites/idle.svg" alt="Luc">
+  <script>
+    window.LucPet = {
+      setExpression(name) {
+        const allowed = new Set(["idle", "happy", "angry", "sleepy"]);
+        const safe = allowed.has(name) ? name : "idle";
+        const pet = document.getElementById("pet");
+        pet.className = `pet pet--${safe}`;
+        pet.src = `clawd_sprites/${safe}.svg`;
+      }
+    };
+  </script>
+</body>
+</html>

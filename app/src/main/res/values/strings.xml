@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Luc</string>
+    <string name="app_title">Luc</string>
+    <string name="permission_status_placeholder">正在检查权限…</string>
+    <string name="permission_status">悬浮窗：%1$s\n通知：%2$s</string>
+    <string name="permission_granted">已允许</string>
+    <string name="permission_required">需要允许</string>
+    <string name="permission_optional">未允许（仍可启动）</string>
+    <string name="start_button">启动 Luc</string>
+    <string name="stop_button">停止 Luc</string>
+    <string name="notification_channel_name">Luc 桌宠</string>
+    <string name="notification_text">Luc 正在陪着你</string>
+</resources>

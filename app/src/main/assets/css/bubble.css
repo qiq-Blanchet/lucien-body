@@ -1,0 +1,42 @@
+html, body {
+  margin: 0;
+  background: transparent;
+}
+
+.bubble {
+  display: inline-block;
+  position: relative;
+  max-width: 220px;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 3px solid #8F2F24;
+  border-radius: 16px;
+  background: #FFF8EC;
+  color: #2F211D;
+  font: 600 15px/1.25 sans-serif;
+  overflow-wrap: anywhere;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bubble::after {
+  position: absolute;
+  width: 0;
+  height: 0;
+  margin: 6px 0 0 16px;
+  border: 8px solid transparent;
+  border-top-color: #8F2F24;
+  content: "";
+}
+
+.bubble--normal { background: #FFF8EC; }
+.bubble--whisper { color: #5D4D47; font-size: 13px; }
+.bubble--shout { border-width: 4px; background: #FFE4D5; font-size: 17px; }
+.bubble--love { border-color: #CF4E72; background: #FFE7EE; color: #9A3150; }
+.bubble--visible { animation: bubble-cycle 5s ease-in-out 1 both; }
+
+@keyframes bubble-cycle {
+  0% { opacity: 0; translate: 0 6px; }
+  12%, 82% { opacity: 1; translate: 0; }
+  100% { opacity: 0; translate: 0 -4px; }
+}
