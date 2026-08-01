@@ -96,7 +96,7 @@ service_block=$(awk '
   active {
     if (
       indentation($0) == service_indent + 2 &&
-      $0 ~ /^[[:space:]]*A: android:name.*com\.luc\.body\.OverlayService/
+      $0 ~ /^[[:space:]]*A: android:name.*="com\.luc\.body\.OverlayService"/
     ) direct_name_match = 1
     block = block $0 ORS
   }
@@ -104,7 +104,7 @@ service_block=$(awk '
     if (!found && active && direct_name_match) printf "%s", block
   }
 ' "$manifest")
-printf '%s\n' "$service_block" | grep -q 'android:name.*OverlayService' || fail "OverlayService missing"
+printf '%s\n' "$service_block" | grep -Eq 'android:name.*="com\.luc\.body\.OverlayService"' || fail "OverlayService missing"
 printf '%s\n' "$service_block" | grep -Eq 'android:exported\([^)]*\)=\(type 0x12\)0x0[[:space:]]*$' || fail "OverlayService export mismatch"
 printf '%s\n' "$service_block" | grep -Eq 'android:foregroundServiceType\([^)]*\)=\(type 0x11\)0x40000000[[:space:]]*$' || fail "OverlayService type mismatch"
 printf '%s\n' "$service_block" | grep -q 'android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE' || fail "OverlayService subtype missing"
