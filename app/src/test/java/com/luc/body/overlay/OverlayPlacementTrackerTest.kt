@@ -34,4 +34,15 @@ class OverlayPlacementTrackerTest {
 
         assertEquals(OverlayPlacementPx(380, 380, 260, 220, false), tracker.moveBy(0f, 0f))
     }
+
+    @Test
+    fun reclampRepositionsWithoutRequiringAnotherTouchEvent() {
+        var currentBounds = bounds
+        val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { currentBounds }
+
+        tracker.initialPlacement()
+        currentBounds = SafeBoundsPx(100, 100, 500, 500)
+
+        assertEquals(OverlayPlacementPx(380, 380, 260, 220, false), tracker.reclampToCurrentBounds())
+    }
 }

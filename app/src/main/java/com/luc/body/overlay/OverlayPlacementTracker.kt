@@ -25,6 +25,20 @@ class OverlayPlacementTracker(
         )
     }
 
+    fun reclampToCurrentBounds(): OverlayPlacementPx {
+        val requestedPetX = checkNotNull(authoritativePetX) { "initial placement is required" }
+        val requestedPetY = checkNotNull(authoritativePetY) { "initial placement is required" }
+        return update(
+            geometry.movePet(
+                petX = requestedPetX.roundToInt(),
+                petY = requestedPetY.roundToInt(),
+                bounds = boundsProvider(),
+            ),
+            requestedPetX,
+            requestedPetY,
+        )
+    }
+
     private fun update(
         newPlacement: OverlayPlacementPx,
         requestedPetX: Float = newPlacement.petX.toFloat(),

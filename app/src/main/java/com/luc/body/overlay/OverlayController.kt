@@ -1,7 +1,9 @@
 package com.luc.body.overlay
 
 import android.content.Context
-import android.graphics.Rect
+import android.content.ComponentCallbacks
+import android.content.res.Configuration
+import android.graphics.Point
 import android.os.Build
 import android.view.View
 import android.view.WindowInsets
@@ -25,6 +27,7 @@ class OverlayController(
     private var petParams: WindowManager.LayoutParams? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
     private var placementTracker: OverlayPlacementTracker? = null
+    private var componentCallbacks: ComponentCallbacks? = null
 
     fun show() {
         if (petView != null || bubbleView != null) return
@@ -58,6 +61,8 @@ class OverlayController(
             bubbleAdded = true
             windowManager.addView(pet, newPetParams)
             petAdded = true
+            registerConfigurationCallback(pet)
+            postReclampAfterInsets(pet)
         } catch (error: RuntimeException) {
             cleanUpFailedShow(pet, bubble, petAdded, bubbleAdded)
             throw error
@@ -67,6 +72,11 @@ class OverlayController(
     fun moveBy(deltaX: Float, deltaY: Float) {
         val tracker = placementTracker ?: return
         applyPlacement(tracker.moveBy(deltaX, deltaY))
+    }
+
+    private fun reclampToCurrentBounds() {
+        val tracker = placementTracker ?: return
+        applyPlacement(tracker.reclampToCurrentBounds())
     }
 
     override fun render(state: VisibleState) {
@@ -104,6 +114,8 @@ class OverlayController(
     }
 
     private fun clearReferences() {
+        componentCallbacks?.let(context::unregisterComponentCallbacks)
+        componentCallbacks = null
         petView = null
         bubbleView = null
         renderer = null
@@ -125,6 +137,7 @@ class OverlayController(
         if (pet.isAttachedToWindow) windowManager.updateViewLayout(pet, currentPetParams)
     }
 
+    @Suppress("DEPRECATION")
     private fun safeBounds(): SafeBoundsPx {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val metrics = windowManager.currentWindowMetrics
@@ -139,8 +152,60 @@ class OverlayController(
             )
         }
         @Suppress("DEPRECATION")
-        val bounds = Rect().also { windowManager.defaultDisplay.getRectSize(it) }
-        return SafeBoundsPx(bounds.left, bounds.top, bounds.right, bounds.bottom)
+        val display = windowManager.defaultDisplay
+        val rootInsets = petView?.rootWindowInsets
+        if (rootInsets != null) {
+            val realSize = Point().also(display::getRealSize)
+            return LegacySafeBounds.fromRealDisplay(
+                width = realSize.x,
+                height = realSize.y,
+                systemInsets = EdgeInsetsPx(
+                    left = rootInsets.stableInsetLeft,
+                    top = rootInsets.stableInsetTop,
+                    right = rootInsets.stableInsetRight,
+                    bottom = rootInsets.stableInsetBottom,
+                ),
+                cutoutInsets = displayCutoutInsets(rootInsets),
+            )
+        }
+        val availableSize = Point().also(display::getSize)
+        return SafeBoundsPx(0, 0, availableSize.x, availableSize.y)
+    }
+
+    private fun displayCutoutInsets(windowInsets: WindowInsets): EdgeInsetsPx {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return ZERO_INSETS
+        val cutout = windowInsets.displayCutout ?: return ZERO_INSETS
+        return EdgeInsetsPx(
+            left = cutout.safeInsetLeft,
+            top = cutout.safeInsetTop,
+            right = cutout.safeInsetRight,
+            bottom = cutout.safeInsetBottom,
+        )
+    }
+
+    private fun registerConfigurationCallback(pet: WebView) {
+        val callbacks = object : ComponentCallbacks {
+            @Suppress("DEPRECATION")
+            override fun onConfigurationChanged(newConfig: Configuration) {
+                postReclampAfterInsets(pet)
+            }
+
+            @Suppress("OVERRIDE_DEPRECATION")
+            override fun onLowMemory() = Unit
+        }
+        context.registerComponentCallbacks(callbacks)
+        componentCallbacks = callbacks
+    }
+
+    private fun postReclampAfterInsets(pet: WebView) {
+        pet.requestApplyInsets()
+        pet.post {
+            if (petView !== pet) return@post
+            pet.requestApplyInsets()
+            pet.post {
+                if (petView === pet) reclampToCurrentBounds()
+            }
+        }
     }
 
     private fun OverlayWindowSpec.toLayoutParams(density: Float): WindowManager.LayoutParams {
@@ -156,5 +221,9 @@ class OverlayController(
         } catch (_: IllegalArgumentException) {
             // A second removal is harmless during service teardown.
         }
+    }
+
+    private companion object {
+        val ZERO_INSETS = EdgeInsetsPx(0, 0, 0, 0)
     }
 }
