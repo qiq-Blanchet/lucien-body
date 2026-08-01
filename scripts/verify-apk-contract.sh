@@ -74,13 +74,10 @@ service_block=$(awk '
     match(line, /[^[:space:]]/)
     return RSTART - 1
   }
-  function is_overlay_service(block) {
-    return block ~ /android:name.*com\.luc\.body\.OverlayService/
-  }
   /^[[:space:]]*E: / {
     current_indent = indentation($0)
     if (active && current_indent <= service_indent) {
-      if (is_overlay_service(block)) {
+      if (direct_name_match) {
         printf "%s", block
         found = 1
         exit
@@ -91,13 +88,20 @@ service_block=$(awk '
     if ($0 ~ /^[[:space:]]*E: service /) {
       active = 1
       service_indent = current_indent
+      direct_name_match = 0
       block = $0 ORS
       next
     }
   }
-  active { block = block $0 ORS }
+  active {
+    if (
+      indentation($0) == service_indent + 2 &&
+      $0 ~ /^[[:space:]]*A: android:name.*com\.luc\.body\.OverlayService/
+    ) direct_name_match = 1
+    block = block $0 ORS
+  }
   END {
-    if (!found && active && is_overlay_service(block)) printf "%s", block
+    if (!found && active && direct_name_match) printf "%s", block
   }
 ' "$manifest")
 printf '%s\n' "$service_block" | grep -q 'android:name.*OverlayService' || fail "OverlayService missing"
