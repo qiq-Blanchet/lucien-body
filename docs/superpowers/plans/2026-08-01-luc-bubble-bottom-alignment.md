@@ -90,4 +90,3 @@ Expected for a `240x160` viewport: the visible bubble's horizontal center is `12
 - [ ] **Step 3: Run `testDebugUnitTest`, `lintRelease`, `assembleDebug`, and `assembleRelease` with the existing local configuration.**
 - [ ] **Step 4: Run APK contract and signature checks on the new release artifact.**
 - [ ] **Step 5: Commit only if an implementation gap is found; otherwise record the audit as no Kotlin source changes required.**
-

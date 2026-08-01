@@ -25,4 +25,3 @@ Keep the existing two-window Android overlay architecture while placing the bubb
 1. Audit window A and its gesture/geometry contracts.
 2. Correct and verify window B's internal bubble placement.
 3. Audit A/B synchronization and the downstream coordinator, network, and service path.
-
