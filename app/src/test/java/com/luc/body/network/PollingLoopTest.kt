@@ -3,6 +3,7 @@ package com.luc.body.network
 import com.luc.body.state.Cancelable
 import com.luc.body.state.DelayScheduler
 import com.luc.body.state.Expression
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 import mockwebserver3.MockResponse
@@ -143,6 +144,41 @@ class PollingLoopTest {
         assertEquals(emptyList<Expression>(), states)
         assertEquals(0, scheduler.activeTaskCount)
         ownerExecutor.runNext()
+
+        assertEquals(listOf(Expression.SLEEPY), states)
+        assertEquals(1, scheduler.activeTaskCount)
+    }
+
+    @Test
+    fun directExecutorCompletionCanStopAndRestartWithoutDeadlockOrOldRunOutput() {
+        val restartFinished = CountDownLatch(1)
+        val currentRunDelivered = CountDownLatch(1)
+        loop = PollingLoop(
+            SupabaseClient(SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key")),
+            scheduler,
+            DIRECT_EXECUTOR,
+        ) { state ->
+            if (state.expression == Expression.HAPPY) {
+                val restart = Thread {
+                    loop.stop()
+                    loop.start()
+                    restartFinished.countDown()
+                }
+                restart.start()
+                check(restartFinished.await(1, TimeUnit.SECONDS)) { "Restart deadlocked behind completion" }
+                restart.join()
+            } else {
+                states += state.expression
+                currentRunDelivered.countDown()
+            }
+        }
+        server.enqueue(stateResponse("happy"))
+        server.enqueue(stateResponse("sleepy"))
+
+        loop.start()
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        check(currentRunDelivered.await(1, TimeUnit.SECONDS)) { "Current run did not complete" }
 
         assertEquals(listOf(Expression.SLEEPY), states)
         assertEquals(1, scheduler.activeTaskCount)

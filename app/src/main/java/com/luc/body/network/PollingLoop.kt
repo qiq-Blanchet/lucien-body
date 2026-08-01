@@ -19,12 +19,12 @@ class PollingLoop(
     private var scheduledPoll: Cancelable? = null
 
     fun start() {
-        synchronized(lock) {
+        val runGeneration = synchronized(lock) {
             if (started) return
             started = true
-            val runGeneration = ++generation
-            fetchLocked(runGeneration)
+            ++generation
         }
+        fetch(runGeneration)
     }
 
     fun stop() {
@@ -43,32 +43,58 @@ class PollingLoop(
         call?.cancel()
     }
 
-    private fun fetchLocked(runGeneration: Long) {
-        check(started && generation == runGeneration)
-        activeCall = client.fetchLatest { result ->
+    private fun fetch(runGeneration: Long) {
+        if (!isCurrentRun(runGeneration)) return
+        val call = client.fetchLatest { result ->
             ownerExecutor.execute { onFetchComplete(runGeneration, result) }
         }
+        val cancelCall = synchronized(lock) {
+            if (isCurrentRunLocked(runGeneration)) {
+                activeCall = call
+                false
+            } else {
+                true
+            }
+        }
+        if (cancelCall) call.cancel()
     }
 
     private fun onFetchComplete(runGeneration: Long, result: Result<RemoteState?>) {
         synchronized(lock) {
-            if (!isCurrentRun(runGeneration)) return
+            if (!isCurrentRunLocked(runGeneration)) return
             activeCall = null
         }
-        result.getOrNull()?.let(onState)
-        synchronized(lock) {
-            if (!isCurrentRun(runGeneration)) return
-            scheduledPoll = scheduler.schedule(POLL_INTERVAL_MS) {
-                synchronized(lock) {
-                    if (!isCurrentRun(runGeneration)) return@schedule
+        result.getOrNull()?.let { state ->
+            if (isCurrentRun(runGeneration)) onState(state)
+        }
+        if (!isCurrentRun(runGeneration)) return
+        val scheduled = scheduler.schedule(POLL_INTERVAL_MS) {
+            val fetchNext = synchronized(lock) {
+                if (!isCurrentRunLocked(runGeneration)) {
+                    false
+                } else {
                     scheduledPoll = null
-                    fetchLocked(runGeneration)
+                    true
                 }
             }
+            if (fetchNext) fetch(runGeneration)
         }
+        val cancelScheduled = synchronized(lock) {
+            if (isCurrentRunLocked(runGeneration) && scheduledPoll == null) {
+                scheduledPoll = scheduled
+                false
+            } else {
+                true
+            }
+        }
+        if (cancelScheduled) scheduled.cancel()
     }
 
-    private fun isCurrentRun(runGeneration: Long): Boolean = started && generation == runGeneration
+    private fun isCurrentRun(runGeneration: Long): Boolean = synchronized(lock) {
+        isCurrentRunLocked(runGeneration)
+    }
+
+    private fun isCurrentRunLocked(runGeneration: Long): Boolean = started && generation == runGeneration
 
     private companion object {
         const val POLL_INTERVAL_MS = 5_000L

@@ -26,8 +26,8 @@ class SupabaseClient(
     fun cancelAll() {
         synchronized(lifecycleLock) {
             generation += 1
-            httpClient.dispatcher.cancelAll()
         }
+        httpClient.dispatcher.cancelAll()
     }
 
     fun fetchLatest(callback: (Result<RemoteState?>) -> Unit): Call {
@@ -42,9 +42,7 @@ class SupabaseClient(
             val call = httpClient.newCall(request(url.toString()).build())
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    deliverIfCurrent(requestGeneration) {
-                        callback(Result.failure(e))
-                    }
+                    if (isCurrent(requestGeneration)) callback(Result.failure(e))
                 }
 
                 override fun onResponse(call: Call, response: Response) {
@@ -54,7 +52,7 @@ class SupabaseClient(
                             parseState(it.body.string())
                         }
                     }
-                    deliverIfCurrent(requestGeneration) { callback(result) }
+                    if (isCurrent(requestGeneration)) callback(result)
                 }
             })
             call
@@ -90,20 +88,18 @@ class SupabaseClient(
                 if (!retry && startRetryIfCurrent(body, callback, requestGeneration, call)) {
                     return
                 } else {
-                    deliverIfCurrent(requestGeneration) { callback(Result.failure(e)) }
+                    if (isCurrent(requestGeneration)) callback(Result.failure(e))
                 }
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val successful = response.use { it.isSuccessful }
                 if (successful) {
-                    deliverIfCurrent(requestGeneration) { callback(Result.success(Unit)) }
+                    if (isCurrent(requestGeneration)) callback(Result.success(Unit))
                 } else if (!retry && startRetryIfCurrent(body, callback, requestGeneration, call)) {
                     return
                 } else {
-                    deliverIfCurrent(requestGeneration) {
-                        callback(Result.failure(IOException("HTTP response was unsuccessful")))
-                    }
+                    if (isCurrent(requestGeneration)) callback(Result.failure(IOException("HTTP response was unsuccessful")))
                 }
             }
         })
@@ -121,10 +117,8 @@ class SupabaseClient(
         true
     }
 
-    private fun deliverIfCurrent(requestGeneration: Long, action: () -> Unit) {
-        synchronized(lifecycleLock) {
-            if (generation == requestGeneration) action()
-        }
+    private fun isCurrent(requestGeneration: Long): Boolean = synchronized(lifecycleLock) {
+        generation == requestGeneration
     }
 
     private fun request(url: String): Request.Builder = Request.Builder()
