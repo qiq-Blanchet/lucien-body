@@ -1,15 +1,34 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
 }
 
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.isFile) {
+        localPropertiesFile.inputStream().use(::load)
+    }
+}
+
 fun configValue(name: String): String =
     providers.gradleProperty(name)
         .orElse(providers.environmentVariable(name))
-        .orElse("")
+        .orElse(localProperties.getProperty(name).orEmpty())
         .get()
+
+val keystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH")
+val keystorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD")
+val keyAliasValue = providers.environmentVariable("ANDROID_KEY_ALIAS")
+val keyPasswordValue = providers.environmentVariable("ANDROID_KEY_PASSWORD")
+val releaseSigningReady = listOf(
+    keystorePath,
+    keystorePassword,
+    keyAliasValue,
+    keyPasswordValue,
+).all { it.orNull?.isNotBlank() == true }
 
 android {
     namespace = "com.luc.body"
@@ -31,6 +50,30 @@ android {
 
     buildFeatures {
         buildConfig = true
+    }
+
+    signingConfigs {
+        create("release") {
+            if (releaseSigningReady) {
+                storeFile = file(keystorePath.get())
+                storePassword = keystorePassword.get()
+                keyAlias = keyAliasValue.get()
+                keyPassword = keyPasswordValue.get()
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (releaseSigningReady) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
     }
 
     compileOptions {
