@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/bubble.css">
+</head>
+<body>
+  <div id="bubble" class="bubble" role="status" aria-live="polite"></div>
+  <script>
+    window.LucBubble = {
+      show(text, style, revision) {
+        const allowed = new Set(["normal", "whisper", "shout", "love"]);
+        const bubble = document.getElementById("bubble");
+        bubble.textContent = String(text).slice(0, 120);
+        bubble.className = `bubble bubble--${allowed.has(style) ? style : "normal"}`;
+        bubble.dataset.revision = revision;
+        void bubble.offsetWidth;
+        bubble.classList.add("bubble--visible");
+      },
+      hide() {
+        document.getElementById("bubble").className = "bubble";
+      }
+    };
+  </script>
+</body>
+</html>

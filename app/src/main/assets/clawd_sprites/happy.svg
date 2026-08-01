@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Luc happy">
+  <g fill="#E7653E" stroke="#8F2F24" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="60" cy="70" rx="31" ry="25"/>
+    <path d="M34 62C19 57 11 45 18 36c8-10 20-1 19 10"/>
+    <path d="M86 62c15-5 23-17 16-26-8-10-20-1-19 10"/>
+    <path d="M39 89l-14 13M53 94l-5 16M67 94l5 16M81 89l14 13"/>
+  </g>
+  <g fill="#FFF8EC" stroke="#8F2F24" stroke-width="4">
+    <circle cx="47" cy="50" r="10"/><circle cx="73" cy="50" r="10"/>
+  </g>
+  <g fill="none" stroke="#2F211D" stroke-width="4" stroke-linecap="round"><path d="M41 53q6-8 12 0"/><path d="M67 53q6-8 12 0"/></g>
+  <path d="M47 74q13 13 26 0" fill="none" stroke="#8F2F24" stroke-width="4" stroke-linecap="round"/>
+</svg>

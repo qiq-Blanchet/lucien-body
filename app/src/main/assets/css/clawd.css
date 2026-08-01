@@ -1,0 +1,25 @@
+html, body {
+  width: 120px;
+  height: 120px;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.pet {
+  display: block;
+  width: 120px;
+  height: 120px;
+  transform-origin: 50% 70%;
+}
+
+.pet--idle { animation: idle-float 2.8s ease-in-out infinite, idle-blink 5s step-end infinite; }
+.pet--happy { animation: happy-sway 1.15s ease-in-out infinite alternate; }
+.pet--angry { animation: angry-shake .34s linear infinite; }
+.pet--sleepy { animation: sleepy-breathe 3s ease-in-out infinite; }
+
+@keyframes idle-float { 50% { translate: 0 -3px; } }
+@keyframes idle-blink { 0%, 92%, 100% { opacity: 1; } 94%, 96% { opacity: .84; } }
+@keyframes happy-sway { from { rotate: -4deg; } to { rotate: 4deg; } }
+@keyframes angry-shake { 0%, 100% { translate: 0; } 25% { translate: -2px 1px; } 75% { translate: 2px -1px; } }
+@keyframes sleepy-breathe { 50% { scale: .96; } }
