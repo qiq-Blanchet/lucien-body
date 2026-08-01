@@ -4,6 +4,11 @@ import com.luc.body.state.Expression
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import okhttp3.Call
+import okhttp3.EventListener
+import okhttp3.OkHttpClient
+import okhttp3.Response
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import org.json.JSONObject
@@ -114,6 +119,41 @@ class SupabaseClientTest {
         val secondBody = requireNotNull(second.body).utf8()
         assertEquals(firstBody, secondBody)
         assertEquals(eventId.toString(), JSONObject(secondBody).getString("id"))
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun cancelAllPreventsARacingPostRetryAndAllowsANewRequest() {
+        val cancelIssued = CountDownLatch(1)
+        val cancelFirstResponse = AtomicBoolean(true)
+        lateinit var cancellableClient: SupabaseClient
+        val httpClient = OkHttpClient.Builder()
+            .eventListenerFactory {
+                object : EventListener() {
+                    override fun responseHeadersEnd(call: Call, response: Response) {
+                        if (cancelFirstResponse.getAndSet(false)) {
+                            cancellableClient.cancelAll()
+                            cancelIssued.countDown()
+                        }
+                    }
+                }
+            }
+            .build()
+        cancellableClient = SupabaseClient(
+            SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key"),
+            httpClient,
+        )
+        server.enqueue(MockResponse.Builder().code(503).build())
+        server.enqueue(MockResponse.Builder().code(201).build())
+
+        cancellableClient.postTap(UUID.randomUUID()) { }
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        check(cancelIssued.await(1, TimeUnit.SECONDS)) { "Cancellation did not race the retry" }
+        assertNull(server.takeRequest(300, TimeUnit.MILLISECONDS))
+        assertEquals(1, server.requestCount)
+
+        assertTrue(awaitResult { cancellableClient.postTap(UUID.randomUUID(), it) }.isSuccess)
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
         assertEquals(2, server.requestCount)
     }
 

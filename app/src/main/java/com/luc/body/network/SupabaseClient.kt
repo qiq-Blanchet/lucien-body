@@ -20,6 +20,16 @@ class SupabaseClient(
     private val config: SupabaseConfig,
     private val httpClient: OkHttpClient = OkHttpClient(),
 ) {
+    private val lifecycleLock = Any()
+    private var generation = 0L
+
+    fun cancelAll() {
+        synchronized(lifecycleLock) {
+            generation += 1
+            httpClient.dispatcher.cancelAll()
+        }
+    }
+
     fun fetchLatest(callback: (Result<RemoteState?>) -> Unit): Call {
         val url = config.baseUrl.toHttpUrl().newBuilder()
             .addPathSegments("rest/v1/clawd_state")
@@ -27,23 +37,28 @@ class SupabaseClient(
             .addQueryParameter("order", "updated_at.desc")
             .addQueryParameter("limit", "1")
             .build()
-        val call = httpClient.newCall(request(url.toString()).build())
-        call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                callback(Result.failure(e))
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                val result = runCatching {
-                    response.use {
-                        check(it.isSuccessful) { "HTTP ${it.code}" }
-                        parseState(it.body.string())
+        return synchronized(lifecycleLock) {
+            val requestGeneration = generation
+            val call = httpClient.newCall(request(url.toString()).build())
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    deliverIfCurrent(requestGeneration) {
+                        callback(Result.failure(e))
                     }
                 }
-                callback(result)
-            }
-        })
-        return call
+
+                override fun onResponse(call: Call, response: Response) {
+                    val result = runCatching {
+                        response.use {
+                            check(it.isSuccessful) { "HTTP ${it.code}" }
+                            parseState(it.body.string())
+                        }
+                    }
+                    deliverIfCurrent(requestGeneration) { callback(result) }
+                }
+            })
+            call
+        }
     }
 
     fun postTap(eventId: UUID, callback: (Result<Unit>) -> Unit): Call {
@@ -52,10 +67,17 @@ class SupabaseClient(
             .put("event_type", "tap")
             .put("payload", JSONObject())
             .toString()
-        return enqueueTap(body, callback, retry = false)
+        return synchronized(lifecycleLock) {
+            enqueueTapLocked(body, callback, generation, retry = false)
+        }
     }
 
-    private fun enqueueTap(body: String, callback: (Result<Unit>) -> Unit, retry: Boolean): Call {
+    private fun enqueueTapLocked(
+        body: String,
+        callback: (Result<Unit>) -> Unit,
+        requestGeneration: Long,
+        retry: Boolean,
+    ): Call {
         val call = httpClient.newCall(
             request("${config.baseUrl}/rest/v1/clawd_events")
                 .post(body.toRequestBody(JSON_MEDIA_TYPE))
@@ -65,25 +87,44 @@ class SupabaseClient(
         )
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (!retry && !call.isCanceled()) {
-                    enqueueTap(body, callback, retry = true)
+                if (!retry && startRetryIfCurrent(body, callback, requestGeneration, call)) {
+                    return
                 } else {
-                    callback(Result.failure(e))
+                    deliverIfCurrent(requestGeneration) { callback(Result.failure(e)) }
                 }
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val successful = response.use { it.isSuccessful }
                 if (successful) {
-                    callback(Result.success(Unit))
-                } else if (!retry) {
-                    enqueueTap(body, callback, retry = true)
+                    deliverIfCurrent(requestGeneration) { callback(Result.success(Unit)) }
+                } else if (!retry && startRetryIfCurrent(body, callback, requestGeneration, call)) {
+                    return
                 } else {
-                    callback(Result.failure(IOException("HTTP response was unsuccessful")))
+                    deliverIfCurrent(requestGeneration) {
+                        callback(Result.failure(IOException("HTTP response was unsuccessful")))
+                    }
                 }
             }
         })
         return call
+    }
+
+    private fun startRetryIfCurrent(
+        body: String,
+        callback: (Result<Unit>) -> Unit,
+        requestGeneration: Long,
+        failedCall: Call,
+    ): Boolean = synchronized(lifecycleLock) {
+        if (generation != requestGeneration || failedCall.isCanceled()) return false
+        enqueueTapLocked(body, callback, requestGeneration, retry = true)
+        true
+    }
+
+    private fun deliverIfCurrent(requestGeneration: Long, action: () -> Unit) {
+        synchronized(lifecycleLock) {
+            if (generation == requestGeneration) action()
+        }
     }
 
     private fun request(url: String): Request.Builder = Request.Builder()

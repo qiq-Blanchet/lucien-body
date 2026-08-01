@@ -3,6 +3,7 @@ package com.luc.body.network
 import com.luc.body.state.Cancelable
 import com.luc.body.state.DelayScheduler
 import com.luc.body.state.Expression
+import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -28,6 +29,7 @@ class PollingLoopTest {
         loop = PollingLoop(
             SupabaseClient(SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key")),
             scheduler,
+            DIRECT_EXECUTOR,
         ) { states += it.expression }
     }
 
@@ -97,6 +99,55 @@ class PollingLoopTest {
         assertFalse(scheduler.hasTasks)
     }
 
+    @Test
+    fun completionWaitsForTheOwnerExecutorBeforeDeliveringStateOrScheduling() {
+        val ownerExecutor = QueuedExecutor()
+        loop = PollingLoop(
+            SupabaseClient(SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key")),
+            scheduler,
+            ownerExecutor,
+        ) { states += it.expression }
+        server.enqueue(stateResponse("happy"))
+
+        loop.start()
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        await { ownerExecutor.pendingCount == 1 }
+
+        assertEquals(emptyList<Expression>(), states)
+        assertEquals(0, scheduler.activeTaskCount)
+        ownerExecutor.runNext()
+        assertEquals(listOf(Expression.HAPPY), states)
+        assertEquals(1, scheduler.activeTaskCount)
+    }
+
+    @Test
+    fun staleCompletionAfterStopAndRestartCannotPolluteTheNewRun() {
+        val ownerExecutor = QueuedExecutor()
+        loop = PollingLoop(
+            SupabaseClient(SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key")),
+            scheduler,
+            ownerExecutor,
+        ) { states += it.expression }
+        server.enqueue(stateResponse("happy"))
+        server.enqueue(stateResponse("sleepy"))
+
+        loop.start()
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        await { ownerExecutor.pendingCount == 1 }
+        loop.stop()
+        loop.start()
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        await { ownerExecutor.pendingCount == 2 }
+
+        ownerExecutor.runNext()
+        assertEquals(emptyList<Expression>(), states)
+        assertEquals(0, scheduler.activeTaskCount)
+        ownerExecutor.runNext()
+
+        assertEquals(listOf(Expression.SLEEPY), states)
+        assertEquals(1, scheduler.activeTaskCount)
+    }
+
     private fun stateResponse(expression: String): MockResponse =
         MockResponse.Builder().code(200).body(stateJson(expression)).build()
 
@@ -133,5 +184,22 @@ class PollingLoopTest {
         fun runAllEvenIfCanceled() {
             tasks.toList().forEach { it.action() }
         }
+    }
+
+    private class QueuedExecutor : Executor {
+        private val tasks = mutableListOf<Runnable>()
+        val pendingCount: Int get() = tasks.size
+
+        override fun execute(command: Runnable) {
+            tasks += command
+        }
+
+        fun runNext() {
+            tasks.removeAt(0).run()
+        }
+    }
+
+    private companion object {
+        val DIRECT_EXECUTOR = Executor { it.run() }
     }
 }
