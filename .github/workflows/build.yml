@@ -70,9 +70,11 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
+          set +e
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "platforms;android-36" "build-tools;36.0.0"
           sdkmanager_status=${PIPESTATUS[1]}
+          set -e
           if [ "$sdkmanager_status" -ne 0 ]; then
             exit "$sdkmanager_status"
           fi
