@@ -14,10 +14,32 @@ val localProperties = Properties().apply {
 }
 
 fun configValue(name: String): String =
-    providers.gradleProperty(name)
-        .orElse(providers.environmentVariable(name))
-        .orElse(localProperties.getProperty(name).orEmpty())
-        .get()
+    gradle.startParameter.projectProperties[name]
+        ?: providers.environmentVariable(name).orNull
+        ?: localProperties.getProperty(name)
+        ?: ""
+
+fun javaStringLiteral(value: String): String = buildString {
+    append('"')
+    value.forEach { character ->
+        when (character) {
+            '\\' -> append("\\\\")
+            '"' -> append("\\\"")
+            '\n' -> append("\\n")
+            '\r' -> append("\\r")
+            '\t' -> append("\\t")
+            '\b' -> append("\\b")
+            '\u000C' -> append("\\f")
+            else -> if (character.code < 0x20) {
+                append('\\')
+                append(character.code.toString(8).padStart(3, '0'))
+            } else {
+                append(character)
+            }
+        }
+    }
+    append('"')
+}
 
 val keystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH")
 val keystorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD")
@@ -40,11 +62,11 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
-        buildConfigField("String", "SUPABASE_URL", "\"${configValue("SUPABASE_URL")}\"")
+        buildConfigField("String", "SUPABASE_URL", javaStringLiteral(configValue("SUPABASE_URL")))
         buildConfigField(
             "String",
             "SUPABASE_PUBLISHABLE_KEY",
-            "\"${configValue("SUPABASE_PUBLISHABLE_KEY")}\"",
+            javaStringLiteral(configValue("SUPABASE_PUBLISHABLE_KEY")),
         )
     }
 
