@@ -94,10 +94,7 @@ service_block=$(awk '
     }
   }
   active {
-    if (
-      indentation($0) == service_indent + 2 &&
-      $0 ~ /^[[:space:]]*A: android:name.*="com\.luc\.body\.OverlayService"/
-    ) direct_name_match = 1
+    if (indentation($0) == service_indent + 2 && $0 ~ /^[[:space:]]*A: android:name.*="com\.luc\.body\.OverlayService"/) direct_name_match = 1
     block = block $0 ORS
   }
   END {
