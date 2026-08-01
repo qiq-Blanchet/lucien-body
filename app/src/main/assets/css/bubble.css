@@ -19,7 +19,7 @@ body {
   border-radius: 16px;
   background: #FFF8EC;
   color: #2F211D;
-  font: 600 15px/1.25 sans-serif;
+  font: 400 15px/1.25 sans-serif;
   overflow-wrap: anywhere;
   opacity: 0;
   pointer-events: none;
