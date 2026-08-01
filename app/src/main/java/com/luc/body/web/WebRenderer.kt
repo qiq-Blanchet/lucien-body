@@ -18,15 +18,20 @@ class WebRenderer(
     private val assetLoader = WebViewAssetLoader.Builder()
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(petWebView.context))
         .build()
+    private val renderGate = WebRenderGate(::renderReadyState)
 
     init {
-        configure(petWebView)
-        configure(bubbleWebView)
-        petWebView.loadUrl("$ASSET_URL/clawd.html")
-        bubbleWebView.loadUrl("$ASSET_URL/bubble.html")
+        configure(petWebView, CLAWD_URL, renderGate::onPetPageFinished)
+        configure(bubbleWebView, BUBBLE_URL, renderGate::onBubblePageFinished)
+        petWebView.loadUrl(CLAWD_URL)
+        bubbleWebView.loadUrl(BUBBLE_URL)
     }
 
     override fun render(state: VisibleState) {
+        renderGate.render(state)
+    }
+
+    private fun renderReadyState(state: VisibleState) {
         petWebView.evaluateJavascript(
             JavascriptCommandBuilder.setExpression(state.expression.name.lowercase()),
             null,
@@ -41,7 +46,11 @@ class WebRenderer(
         bubbleWebView.evaluateJavascript(bubbleCommand, null)
     }
 
-    private fun configure(webView: WebView) {
+    private fun configure(
+        webView: WebView,
+        expectedUrl: String,
+        onExpectedPageFinished: () -> Unit,
+    ) {
         webView.setBackgroundColor(Color.TRANSPARENT)
         webView.settings.apply {
             javaScriptEnabled = true
@@ -51,12 +60,18 @@ class WebRenderer(
             allowUniversalAccessFromFileURLs = false
             blockNetworkLoads = true
         }
-        webView.webViewClient = AssetOnlyWebViewClient(assetLoader)
+        webView.webViewClient = AssetOnlyWebViewClient(
+            assetLoader = assetLoader,
+            expectedUrl = expectedUrl,
+            onExpectedPageFinished = onExpectedPageFinished,
+        )
         webView.setDownloadListener(DownloadListener { _, _, _, _, _ -> Unit })
     }
 
     private class AssetOnlyWebViewClient(
         private val assetLoader: WebViewAssetLoader,
+        private val expectedUrl: String,
+        private val onExpectedPageFinished: () -> Unit,
     ) : WebViewClient() {
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
             assetLoader.shouldInterceptRequest(request.url)
@@ -68,6 +83,11 @@ class WebRenderer(
         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
             !isBundledAsset(Uri.parse(url))
 
+        override fun onPageFinished(view: WebView, url: String) {
+            super.onPageFinished(view, url)
+            if (url == expectedUrl) onExpectedPageFinished()
+        }
+
         private fun isBundledAsset(uri: Uri): Boolean =
             uri.scheme == "https" &&
                 uri.host == WebViewAssetLoader.DEFAULT_DOMAIN &&
@@ -76,5 +96,7 @@ class WebRenderer(
 
     private companion object {
         const val ASSET_URL = "https://${WebViewAssetLoader.DEFAULT_DOMAIN}/assets"
+        const val CLAWD_URL = "$ASSET_URL/clawd.html"
+        const val BUBBLE_URL = "$ASSET_URL/bubble.html"
     }
 }
