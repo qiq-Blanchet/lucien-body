@@ -3,6 +3,13 @@ html, body {
   background: transparent;
 }
 
+body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 100vh;
+}
+
 .bubble {
   display: inline-block;
   position: relative;
