@@ -46,4 +46,10 @@ class OverlayWindowSpecTest {
             assertEquals(Gravity.TOP or Gravity.START, spec.gravity)
         }
     }
+
+    @Test
+    fun sizesConvertFromDpToExactPixelsForWindowLayout() {
+        assertEquals(OverlaySizePx(width = 150, height = 150), OverlayWindowSpec.pet().sizePx(1.25f))
+        assertEquals(OverlaySizePx(width = 300, height = 200), OverlayWindowSpec.bubble().sizePx(1.25f))
+    }
 }

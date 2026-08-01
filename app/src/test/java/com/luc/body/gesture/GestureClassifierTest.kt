@@ -62,7 +62,7 @@ class GestureClassifierTest {
 
         classifier.onDown(100f, 100f, 1_000)
 
-        assertEquals(GestureResult.DragEnd, classifier.onUp(110f, 110f, 1_100))
+        assertEquals(GestureResult.DragEnd, classifier.onUp(111f, 111f, 1_100))
     }
 
     @Test

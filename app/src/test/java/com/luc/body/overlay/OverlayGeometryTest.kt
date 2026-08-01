@@ -24,7 +24,7 @@ class OverlayGeometryTest {
 
         assertEquals(778, placement.petX)
         assertEquals(1_728, placement.petY)
-        assertEquals(658, placement.bubbleX)
+        assertEquals(570, placement.bubbleX)
         assertEquals(1_408, placement.bubbleY)
         assertFalse(placement.bubbleBelowPet)
     }
