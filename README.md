@@ -10,12 +10,13 @@ V2 已实现 28 个具名状态、37 份 SVG 变体随机池、外部素材覆�
 - raw 坐标拖拽、10dp 阈值、300ms 双击、500ms 长按菜单、四向 fling 与贴边吸附。
 - tap/双击/吸附点击 1.2 秒本地锁；拖拽不可被远端状态打断。
 - Supabase Realtime UPDATE、25 秒心跳、指数退避重连、失败后 5 秒 HTTP 轮询。
+- Supabase 下发的 expression 与同条气泡同时到期；无气泡时按当前基础气泡时长到期，再回到吸附、时段/孤独或 idle。
 - 事件满 3 条或 10 秒批量上报；REST 与 WebSocket 均携带 `apikey` 和 Bearer。
 - 开机自启、常驻通知“显示/隐藏”“退出”、位置恢复以及 10 项设置。
 
 ## 安装与使用
 
-1. 安装 GitHub Actions 产出的 `Luc-0.1.5-release.apk`。
+1. 安装 GitHub Actions 产出的 `Luc-0.1.6-release.apk`。
 2. 首次打开时按说明依次处理悬浮窗权限、电池优化白名单和使用情况访问；只有悬浮窗权限是运行必需，后两项可跳过。Android 13 及以上在启动时另行请求通知权限。
 3. Android 16 从下载的 APK 安装时，会把悬浮窗和使用情况访问列为受限设置。若系统开关不可点，先在 Luc 主界面点“打开 Luc 应用详情”，再点应用详情右上角菜单中的“允许受限设置”；返回后用主界面的两个权限按钮分别授权。
 4. 填写 Supabase URL 与 publishable key，保存设置后点击“启动 Luc”。留空时本地手势与行为仍可运行，但不会连接远端。
@@ -56,7 +57,7 @@ $env:SUPABASE_PUBLISHABLE_KEY = 'YOUR_SUPABASE_PUBLISHABLE_KEY'
 
 ## GitHub Actions 签名发布
 
-推送到 `main` 或手动运行 **Build release APK** 工作流会构建并上传签名的 `Luc-0.1.5-release.apk`；针对 `main` 的 pull request 会运行单测、lint 和 debug 构建。在仓库 **Settings → Secrets and variables → Actions** 中配置下列六个 secrets（名称必须完全一致）：
+推送到 `main` 或手动运行 **Build release APK** 工作流会构建并上传签名的 `Luc-0.1.6-release.apk`；针对 `main` 的 pull request 会运行单测、lint 和 debug 构建。在仓库 **Settings → Secrets and variables → Actions** 中配置下列六个 secrets（名称必须完全一致）：
 
 | Secret | 用途 |
 | --- | --- |
@@ -85,7 +86,7 @@ Set-Clipboard -Value $encoded
 Remove-Variable encoded
 ```
 
-工作流成功后，进入该次 Actions run，在 **Artifacts** 区下载名为 `Luc-0.1.5-release.apk` 的单文件 artifact（保留 30 天）。CI 会在上传前运行 APK 契约检查、`apksigner verify --verbose` 和 `keytool -printcert -jarfile`；没有完整签名环境变量时，本地 `assembleRelease` 可以生成 unsigned APK，但 CI 不会上传它。
+工作流成功后，进入该次 Actions run，在 **Artifacts** 区下载名为 `Luc-0.1.6-release.apk` 的单文件 artifact（保留 30 天）。CI 会在上传前运行 APK 契约检查、`apksigner verify --verbose` 和 `keytool -printcert -jarfile`；没有完整签名环境变量时，本地 `assembleRelease` 可以生成 unsigned APK，但 CI 不会上传它。
 
 ## 验证命令
 

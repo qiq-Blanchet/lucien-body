@@ -294,6 +294,49 @@ class StateCoordinatorTest {
     }
 
     @Test
+    fun remoteExpressionExpiresWithItsBubbleAndRestoresLocalContext() {
+        val sink = RecordingSink()
+        val scheduler = FakeScheduler()
+        val coordinator = coordinator(sink, scheduler)
+        coordinator.setContextState(ContextSource.TIME_SLOT, Expression.SLEEPY)
+
+        coordinator.onRemoteState(remote(Expression.HAPPY, "hello", revision = REVISION_1))
+        assertEquals(Expression.TALKING, sink.states.last().expression)
+
+        scheduler.advanceBy(3_999)
+        assertEquals(Expression.TALKING, sink.states.last().expression)
+        scheduler.advanceBy(1)
+        assertEquals(Expression.SLEEPY, sink.states.last().expression)
+        assertNull(sink.states.last().bubbleText)
+    }
+
+    @Test
+    fun remoteExpressionWithoutBubbleExpiresAfterTheBaseBubbleDuration() {
+        val sink = RecordingSink()
+        val scheduler = FakeScheduler()
+        val coordinator = coordinator(sink, scheduler)
+
+        coordinator.onRemoteState(remote(Expression.LOVE, revision = REVISION_1))
+        scheduler.advanceBy(3_999)
+        assertEquals(Expression.LOVE, sink.states.last().expression)
+        scheduler.advanceBy(1)
+        assertEquals(Expression.IDLE, sink.states.last().expression)
+    }
+
+    @Test
+    fun canceledRemoteExpiryCannotClearANewerRemoteState() {
+        val sink = RecordingSink()
+        val scheduler = UnreliableScheduler()
+        val coordinator = coordinator(sink, scheduler)
+
+        coordinator.onRemoteState(remote(Expression.HAPPY, revision = REVISION_1))
+        coordinator.onRemoteState(remote(Expression.LOVE, revision = REVISION_2))
+        scheduler.runEvenIfCanceled(0)
+
+        assertEquals(Expression.LOVE, sink.states.last().expression)
+    }
+
+    @Test
     fun bubbleDurationUsesCodePointsFullTensAndATenSecondCap() {
         assertEquals(4_000L, StateCoordinator.bubbleDurationMs("x".repeat(9)))
         assertEquals(5_000L, StateCoordinator.bubbleDurationMs("x".repeat(10)))

@@ -279,6 +279,8 @@
 - 连接 Supabase Realtime WebSocket
 - 订阅 clawd_state 表的 UPDATE 事件
 - 收到变更立即更新表情和气泡
+- expression 与同条气泡使用相同显示时长；无气泡时使用当前基础气泡时长
+- 到期后释放远端状态，按吸附 → 时段/孤独等本地状态 → idle 的现有 fallback 恢复
 - 心跳保活，断线自动重连（指数退避：1s/2s/4s/8s/16s/30s 封顶）
 
 **备用通道：HTTP 轮询**
