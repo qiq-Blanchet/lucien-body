@@ -4,14 +4,9 @@ import com.luc.body.state.Expression
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
-import okhttp3.Call
-import okhttp3.EventListener
-import okhttp3.OkHttpClient
-import okhttp3.Response
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import org.json.JSONObject
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import org.json.JSONArray
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,43 +28,49 @@ class SupabaseClientTest {
 
     @After
     fun tearDown() {
-        server.close()
+        server.shutdown()
     }
 
     @Test
     fun fetchUsesDualHeadersAndParsesLatestState() {
         server.enqueue(
-            MockResponse.Builder().code(200).body(
-                """[{"expression":"happy","bubble_text":"在呢","bubble_style":"love","updated_at":"2026-07-29T12:00:00Z"}]""",
-            ).build(),
+            MockResponse().setResponseCode(200).setBody(
+                """[{"expression":"happy","bubble_text":"在呢","bubble_style":"love","valence":0.8,"arousal":0.4,"heat":7,"updated_at":"2026-07-29T12:00:00Z"}]""",
+            ),
         )
 
         val result = awaitResult { client.fetchLatest(it) }
         val request = server.takeRequest(1, TimeUnit.SECONDS)
 
         requireNotNull(request)
-        assertEquals("/rest/v1/clawd_state", request.url.encodedPath)
-        assertEquals("expression,bubble_text,bubble_style,updated_at", request.url.queryParameter("select"))
-        assertEquals("updated_at.desc", request.url.queryParameter("order"))
-        assertEquals("1", request.url.queryParameter("limit"))
+        assertEquals("/rest/v1/clawd_state", request.requestUrl?.encodedPath)
+        assertEquals(
+            "expression,bubble_text,bubble_style,valence,arousal,heat,updated_at",
+            request.requestUrl?.queryParameter("select"),
+        )
+        assertEquals("updated_at.desc", request.requestUrl?.queryParameter("order"))
+        assertEquals("1", request.requestUrl?.queryParameter("limit"))
         assertEquals("test-key", request.headers["apikey"])
         assertEquals("Bearer test-key", request.headers["Authorization"])
         assertEquals("application/json", request.headers["Accept"])
         assertEquals(Expression.HAPPY, result.getOrThrow()?.expression)
         assertEquals("在呢", result.getOrThrow()?.bubbleText)
         assertEquals("2026-07-29T12:00:00Z", result.getOrThrow()?.updatedAt)
+        assertEquals(0.8, result.getOrThrow()?.valence ?: -1.0, 0.0)
+        assertEquals(0.4, result.getOrThrow()?.arousal ?: -1.0, 0.0)
+        assertEquals(7, result.getOrThrow()?.heat)
     }
 
     @Test
     fun fetchReturnsNullForAnEmptyArray() {
-        server.enqueue(MockResponse.Builder().code(200).body("[]").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("[]"))
 
         assertNull(awaitResult { client.fetchLatest(it) }.getOrThrow())
     }
 
     @Test
     fun fetchReturnsFailureForInvalidJson() {
-        server.enqueue(MockResponse.Builder().code(200).body("not-json").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("not-json"))
 
         assertTrue(awaitResult { client.fetchLatest(it) }.isFailure)
     }
@@ -77,26 +78,28 @@ class SupabaseClientTest {
     @Test
     fun fetchMapsUnknownExpressionToIdle() {
         server.enqueue(
-            MockResponse.Builder().code(200).body(
+            MockResponse().setResponseCode(200).setBody(
                 """[{"expression":"excited","bubble_text":null,"bubble_style":"normal","updated_at":"2026-07-29T12:00:00Z"}]""",
-            ).build(),
+            ),
         )
 
         assertEquals(Expression.IDLE, awaitResult { client.fetchLatest(it) }.getOrThrow()?.expression)
     }
 
     @Test
-    fun postUsesTheProvidedUuidAndRequiredHeaders() {
+    fun postUsesArrayPayloadAndRequiredHeaders() {
         val eventId = UUID.randomUUID()
-        server.enqueue(MockResponse.Builder().code(201).build())
+        server.enqueue(MockResponse().setResponseCode(201))
 
         assertTrue(awaitResult { client.postTap(eventId, it) }.isSuccess)
         val request = requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
-        val body = JSONObject(requireNotNull(request.body).utf8())
+        val rows = JSONArray(request.body.readUtf8())
+        val body = rows.getJSONObject(0)
 
         assertEquals("POST", request.method)
-        assertEquals("/rest/v1/clawd_events", request.url.encodedPath)
-        assertEquals(eventId.toString(), body.getString("id"))
+        assertEquals("/rest/v1/clawd_events", request.requestUrl?.encodedPath)
+        assertEquals(1, rows.length())
+        assertFalse(body.has("id"))
         assertEquals("tap", body.getString("event_type"))
         assertEquals(0, body.getJSONObject("payload").length())
         assertEquals("test-key", request.headers["apikey"])
@@ -106,60 +109,19 @@ class SupabaseClientTest {
     }
 
     @Test
-    fun postRetriesOne503WithTheSameUuidAndBody() {
+    fun failedPostDoesNotLaunchAnUntrackedRetry() {
         val eventId = UUID.randomUUID()
-        server.enqueue(MockResponse.Builder().code(503).build())
-        server.enqueue(MockResponse.Builder().code(201).build())
+        server.enqueue(MockResponse().setResponseCode(503))
 
-        assertTrue(awaitResult { client.postTap(eventId, it) }.isSuccess)
-        val first = requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
-        val second = requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
-
-        val firstBody = requireNotNull(first.body).utf8()
-        val secondBody = requireNotNull(second.body).utf8()
-        assertEquals(firstBody, secondBody)
-        assertEquals(eventId.toString(), JSONObject(secondBody).getString("id"))
-        assertEquals(2, server.requestCount)
-    }
-
-    @Test
-    fun cancelAllPreventsARacingPostRetryAndAllowsANewRequest() {
-        val cancelIssued = CountDownLatch(1)
-        val cancelFirstResponse = AtomicBoolean(true)
-        lateinit var cancellableClient: SupabaseClient
-        val httpClient = OkHttpClient.Builder()
-            .eventListenerFactory {
-                object : EventListener() {
-                    override fun responseHeadersEnd(call: Call, response: Response) {
-                        if (cancelFirstResponse.getAndSet(false)) {
-                            cancellableClient.cancelAll()
-                            cancelIssued.countDown()
-                        }
-                    }
-                }
-            }
-            .build()
-        cancellableClient = SupabaseClient(
-            SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key"),
-            httpClient,
-        )
-        server.enqueue(MockResponse.Builder().code(503).build())
-        server.enqueue(MockResponse.Builder().code(201).build())
-
-        cancellableClient.postTap(UUID.randomUUID()) { }
+        assertTrue(awaitResult { client.postTap(eventId, it) }.isFailure)
         requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
-        check(cancelIssued.await(1, TimeUnit.SECONDS)) { "Cancellation did not race the retry" }
         assertNull(server.takeRequest(300, TimeUnit.MILLISECONDS))
         assertEquals(1, server.requestCount)
-
-        assertTrue(awaitResult { cancellableClient.postTap(UUID.randomUUID(), it) }.isSuccess)
-        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
-        assertEquals(2, server.requestCount)
     }
 
     @Test
     fun getFailureDoesNotRetryImmediately() {
-        server.enqueue(MockResponse.Builder().code(503).build())
+        server.enqueue(MockResponse().setResponseCode(503))
 
         assertTrue(awaitResult { client.fetchLatest(it) }.isFailure)
         requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))

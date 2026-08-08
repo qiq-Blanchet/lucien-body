@@ -37,7 +37,7 @@ manifest="$work_dir/manifest.txt"
 "$aapt" dump xmltree "$apk" AndroidManifest.xml >"$manifest" || fail "aapt could not inspect manifest"
 
 grep -q "^package: name='com.luc.body'" "$badging" || fail "application ID mismatch"
-grep -q "targetSdkVersion:'36'" "$badging" || fail "target SDK mismatch"
+grep -q "targetSdkVersion:'34'" "$badging" || fail "target SDK mismatch"
 grep -q "application-label:'Luc'" "$badging" || fail "application label mismatch"
 
 system_alert_count=0
@@ -45,6 +45,9 @@ foreground_service_count=0
 special_use_count=0
 notification_count=0
 internet_count=0
+boot_count=0
+usage_stats_count=0
+battery_optimization_count=0
 dynamic_receiver_count=0
 while IFS= read -r permission_line; do
   permission=${permission_line#*: name=\'}
@@ -59,6 +62,9 @@ while IFS= read -r permission_line; do
     android.permission.FOREGROUND_SERVICE_SPECIAL_USE) special_use_count=$((special_use_count + 1)) ;;
     android.permission.POST_NOTIFICATIONS) notification_count=$((notification_count + 1)) ;;
     android.permission.INTERNET) internet_count=$((internet_count + 1)) ;;
+    android.permission.RECEIVE_BOOT_COMPLETED) boot_count=$((boot_count + 1)) ;;
+    android.permission.PACKAGE_USAGE_STATS) usage_stats_count=$((usage_stats_count + 1)) ;;
+    android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) battery_optimization_count=$((battery_optimization_count + 1)) ;;
     *) fail "permission contract mismatch" ;;
   esac
 done < <(grep "^uses-permission" "$badging" || true)
@@ -67,6 +73,9 @@ done < <(grep "^uses-permission" "$badging" || true)
 [ "$special_use_count" -eq 1 ] || fail "permission contract mismatch"
 [ "$notification_count" -eq 1 ] || fail "permission contract mismatch"
 [ "$internet_count" -eq 1 ] || fail "permission contract mismatch"
+[ "$boot_count" -eq 1 ] || fail "permission contract mismatch"
+[ "$usage_stats_count" -eq 1 ] || fail "permission contract mismatch"
+[ "$battery_optimization_count" -eq 1 ] || fail "permission contract mismatch"
 [ "$dynamic_receiver_count" -le 1 ] || fail "permission contract mismatch"
 
 service_block=$(awk '

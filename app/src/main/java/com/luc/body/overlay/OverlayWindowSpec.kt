@@ -28,20 +28,19 @@ data class OverlayWindowSpec(
     }
 
     companion object {
-        fun pet(): OverlayWindowSpec = OverlayWindowSpec(
-            widthDp = 120,
-            heightDp = 120,
+        fun pet(sizeDp: Int = 90): OverlayWindowSpec = OverlayWindowSpec(
+            widthDp = sizeDp,
+            heightDp = sizeDp,
             touchable = true,
-            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             pixelFormat = PixelFormat.TRANSLUCENT,
             gravity = Gravity.TOP or Gravity.START,
         )
 
         fun bubble(): OverlayWindowSpec = OverlayWindowSpec(
-            widthDp = 240,
-            heightDp = 160,
+            widthDp = 180,
+            heightDp = 120,
             touchable = false,
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or

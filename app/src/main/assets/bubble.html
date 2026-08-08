@@ -10,7 +10,7 @@
   <script>
     window.LucBubble = {
       show(text, style, revision) {
-        const allowed = new Set(["normal", "whisper", "shout", "love"]);
+        const allowed = new Set(["normal", "whisper", "shout", "love", "sleepy"]);
         const bubble = document.getElementById("bubble");
         bubble.textContent = String(text).slice(0, 120);
         bubble.className = `bubble bubble--${allowed.has(style) ? style : "normal"}`;

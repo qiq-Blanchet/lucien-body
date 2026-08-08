@@ -3,6 +3,8 @@ name: Build release APK
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -47,6 +49,7 @@ jobs:
         run: actionlint .github/workflows/build.yml
 
       - name: Check required secrets
+        if: github.event_name != 'pull_request'
         shell: bash
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -80,6 +83,7 @@ jobs:
           fi
 
       - name: Decode release keystore
+        if: github.event_name != 'pull_request'
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -91,6 +95,7 @@ jobs:
           printf 'ANDROID_KEYSTORE_PATH=%s\n' "$keystore_path" >> "$GITHUB_ENV"
 
       - name: Build and verify signed release APK
+        if: github.event_name != 'pull_request'
         shell: bash
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -108,7 +113,12 @@ jobs:
           "$build_tools/apksigner" verify --verbose Luc-0.1.0-release.apk
           keytool -printcert -jarfile Luc-0.1.0-release.apk
 
+      - name: Verify pull request
+        if: github.event_name == 'pull_request'
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+
       - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
           name: Luc-0.1.0-release.apk
           path: Luc-0.1.0-release.apk

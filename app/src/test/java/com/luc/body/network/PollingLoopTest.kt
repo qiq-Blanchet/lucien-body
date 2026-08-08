@@ -8,8 +8,10 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executor
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
+import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -23,6 +25,8 @@ class PollingLoopTest {
     private lateinit var ownerExecutor: QueuedExecutor
     private lateinit var states: MutableList<Expression>
     private lateinit var loop: PollingLoop
+    private lateinit var httpClient: OkHttpClient
+    private lateinit var supabaseClient: SupabaseClient
 
     @Before
     fun setUp() {
@@ -31,8 +35,13 @@ class PollingLoopTest {
         scheduler = FakeScheduler()
         ownerExecutor = QueuedExecutor()
         states = CopyOnWriteArrayList()
+        httpClient = OkHttpClient()
+        supabaseClient = SupabaseClient(
+            SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key"),
+            httpClient,
+        )
         loop = PollingLoop(
-            SupabaseClient(SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key")),
+            supabaseClient,
             scheduler,
             ownerExecutor,
         ) { states += it.expression }
@@ -41,7 +50,10 @@ class PollingLoopTest {
     @After
     fun tearDown() {
         loop.stop()
-        server.close()
+        supabaseClient.cancelAll()
+        httpClient.dispatcher.executorService.shutdownNow()
+        httpClient.connectionPool.evictAll()
+        server.shutdown()
     }
 
     @Test
@@ -92,7 +104,7 @@ class PollingLoopTest {
     @Test
     fun stopDuringAnActiveFetchDoesNotScheduleAnotherPoll() {
         server.enqueue(
-            MockResponse.Builder().code(200).body(stateJson("happy")).bodyDelay(10, TimeUnit.SECONDS).build(),
+            MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE),
         )
 
         loop.start()
@@ -108,7 +120,7 @@ class PollingLoopTest {
     fun completionWaitsForTheOwnerExecutorBeforeDeliveringStateOrScheduling() {
         val ownerExecutor = QueuedExecutor()
         loop = PollingLoop(
-            SupabaseClient(SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key")),
+            supabaseClient,
             scheduler,
             ownerExecutor,
         ) { states += it.expression }
@@ -128,7 +140,7 @@ class PollingLoopTest {
     fun staleCompletionAfterStopAndRestartCannotPolluteTheNewRun() {
         val ownerExecutor = QueuedExecutor()
         loop = PollingLoop(
-            SupabaseClient(SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key")),
+            supabaseClient,
             scheduler,
             ownerExecutor,
         ) { states += it.expression }
@@ -157,7 +169,7 @@ class PollingLoopTest {
         val restartFinished = CountDownLatch(1)
         val currentRunDelivered = CountDownLatch(1)
         loop = PollingLoop(
-            SupabaseClient(SupabaseConfig(server.url("/").toString().removeSuffix("/"), "test-key")),
+            supabaseClient,
             scheduler,
             DIRECT_EXECUTOR,
         ) { state ->
@@ -187,7 +199,7 @@ class PollingLoopTest {
     }
 
     private fun stateResponse(expression: String): MockResponse =
-        MockResponse.Builder().code(200).body(stateJson(expression)).build()
+        MockResponse().setResponseCode(200).setBody(stateJson(expression))
 
     private fun stateJson(expression: String): String =
         """[{"expression":"$expression","bubble_text":null,"bubble_style":"normal","updated_at":"2026-07-29T12:00:00Z"}]"""

@@ -29,10 +29,35 @@ body {
 .bubble--whisper { color: #5D4D47; font-size: 13px; }
 .bubble--shout { background: #FFE4D5; font-size: 17px; }
 .bubble--love { background: #FFE7EE; color: #9A3150; }
+.bubble--sleepy { opacity: 0; }
+.bubble--sleepy::after {
+  content: "…";
+  display: inline-block;
+  width: 1em;
+  overflow: hidden;
+  vertical-align: bottom;
+  animation: sleepy-dots 1.2s steps(2, end) infinite;
+}
 .bubble--visible { animation: bubble-cycle 5s ease-in-out 1 both; }
 
 @keyframes bubble-cycle {
   0% { opacity: 0; translate: 0 6px; }
+  12%, 82% { opacity: .72; translate: 0; }
+  100% { opacity: 0; translate: 0 -4px; }
+}
+
+.bubble--normal.bubble--visible,
+.bubble--whisper.bubble--visible,
+.bubble--shout.bubble--visible,
+.bubble--love.bubble--visible { animation-name: bubble-cycle-opaque; }
+
+@keyframes bubble-cycle-opaque {
+  0% { opacity: 0; translate: 0 6px; }
   12%, 82% { opacity: 1; translate: 0; }
   100% { opacity: 0; translate: 0 -4px; }
+}
+
+@keyframes sleepy-dots {
+  from { width: 0; }
+  to { width: 1em; }
 }

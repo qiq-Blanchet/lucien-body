@@ -37,6 +37,25 @@ class JavascriptCommandBuilderTest {
     }
 
     @Test
+    fun spriteCommandQuotesUrlAndStateInjectionPayloads() {
+        assertEquals(
+            "window.LucPet.setSprite(\"https://example.test/x.svg?x=\\\";alert(1)//\",\"idle\\\";alert(2)//\")",
+            JavascriptCommandBuilder.setSprite(
+                "https://example.test/x.svg?x=\";alert(1)//",
+                "idle\";alert(2)//",
+            ),
+        )
+    }
+
+    @Test
+    fun sleepyIsAnAllowedBubbleStyle() {
+        assertEquals(
+            "window.LucBubble.show(\"zzz\",\"sleepy\",\"r\")",
+            JavascriptCommandBuilder.showBubble("zzz", "sleepy", "r"),
+        )
+    }
+
+    @Test
     fun hideBubbleUsesNoArguments() {
         assertEquals("window.LucBubble.hide()", JavascriptCommandBuilder.hideBubble())
     }

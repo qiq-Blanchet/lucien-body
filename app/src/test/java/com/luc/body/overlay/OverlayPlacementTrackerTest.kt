@@ -11,8 +11,8 @@ class OverlayPlacementTrackerTest {
         val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
 
         tracker.initialPlacement()
-        assertEquals(OverlayPlacementPx(854, 870, 760, 710, false), tracker.moveBy(-10f, 6f))
-        assertEquals(OverlayPlacementPx(858, 862, 760, 702, false), tracker.moveBy(4f, -8f))
+        assertEquals(OverlayPlacementPx(884, 900, 820, 780, false), tracker.moveBy(-10f, 6f))
+        assertEquals(OverlayPlacementPx(888, 892, 820, 772, false), tracker.moveBy(4f, -8f))
     }
 
     @Test
@@ -20,8 +20,8 @@ class OverlayPlacementTrackerTest {
         val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
 
         tracker.initialPlacement()
-        assertEquals(864, tracker.moveBy(0.4f, 0f).petX)
-        assertEquals(865, tracker.moveBy(0.4f, 0f).petX)
+        assertEquals(894, tracker.moveBy(0.4f, 0f).petX)
+        assertEquals(895, tracker.moveBy(0.4f, 0f).petX)
     }
 
     @Test
@@ -32,7 +32,7 @@ class OverlayPlacementTrackerTest {
         tracker.initialPlacement()
         currentBounds = SafeBoundsPx(100, 100, 500, 500)
 
-        assertEquals(OverlayPlacementPx(380, 380, 260, 220, false), tracker.moveBy(0f, 0f))
+        assertEquals(OverlayPlacementPx(410, 410, 320, 290, false), tracker.moveBy(0f, 0f))
     }
 
     @Test
@@ -43,6 +43,44 @@ class OverlayPlacementTrackerTest {
         tracker.initialPlacement()
         currentBounds = SafeBoundsPx(100, 100, 500, 500)
 
-        assertEquals(OverlayPlacementPx(380, 380, 260, 220, false), tracker.reclampToCurrentBounds())
+        assertEquals(OverlayPlacementPx(410, 410, 320, 290, false), tracker.reclampToCurrentBounds())
+    }
+
+    @Test
+    fun `drag end snaps and reports stuck only within edge threshold`() {
+        val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
+        tracker.initialPlacement()
+        tracker.moveBy(-879f, -400f)
+
+        val snapped = tracker.finishDrag()
+
+        assertEquals(SnapEdge.LEFT, snapped.edge)
+        assertEquals(0, snapped.placement.petX)
+        assertEquals(true, tracker.isStuck)
+    }
+
+    @Test
+    fun `drag end away from edges remains free`() {
+        val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
+        tracker.initialPlacement()
+        tracker.moveBy(-400f, -400f)
+
+        val result = tracker.finishDrag()
+
+        assertEquals(null, result.edge)
+        assertEquals(false, tracker.isStuck)
+    }
+
+    @Test
+    fun `fling release bypasses edge snap`() {
+        val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
+        tracker.initialPlacement()
+        tracker.moveBy(-879f, -400f)
+
+        val result = tracker.finishDrag(allowSnap = false)
+
+        assertEquals(null, result.edge)
+        assertEquals(15, result.placement.petX)
+        assertEquals(false, tracker.isStuck)
     }
 }

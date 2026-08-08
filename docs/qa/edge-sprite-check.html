@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>RUNNING</title>
+<style>
+  #sprites { display: grid; grid-template-columns: repeat(8, 90px); gap: 4px; }
+  .sprite { width: 90px; height: 90px; }
+  .sprite svg { width: 90px; height: 90px; }
+</style>
+<p id="result">RUNNING</p>
+<div id="sprites"></div>
+<script>
+  (async () => {
+    try {
+      const manifest = await (await fetch('/docs/clawd-v2-svg-hashes.json')).json();
+      const names = Object.keys(manifest.files);
+      const container = document.getElementById('sprites');
+      await Promise.all(names.map(async (name) => {
+        const response = await fetch(`/app/src/main/assets/clawd_sprites/${encodeURIComponent(name)}`);
+        const svgText = await response.text();
+        const documentNode = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+        if (!response.ok || !svgText || documentNode.querySelector('parsererror') || !documentNode.querySelector('svg')) {
+          throw new Error(`Invalid SVG: ${name}`);
+        }
+        const tile = document.createElement('div');
+        tile.className = 'sprite';
+        tile.innerHTML = svgText;
+        container.append(tile);
+      }));
+      document.body.dataset.result = `PASS ${names.length}`;
+      document.title = document.body.dataset.result;
+      document.getElementById('result').textContent = document.body.dataset.result;
+    } catch (error) {
+      document.body.dataset.result = `FAIL ${error.message}`;
+      document.title = document.body.dataset.result;
+      document.getElementById('result').textContent = document.body.dataset.result;
+    }
+  })();
+</script>

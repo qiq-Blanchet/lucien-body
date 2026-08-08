@@ -3,13 +3,22 @@ package com.luc.body.overlay
 import android.content.Context
 import android.content.ComponentCallbacks
 import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.graphics.Point
 import android.os.Build
+import android.view.Gravity
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.webkit.WebView
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.OverScroller
 import com.luc.body.gesture.GestureClassifier
+import com.luc.body.gesture.FlingGesture
 import com.luc.body.gesture.PetGestureController
 import com.luc.body.state.UiSink
 import com.luc.body.state.VisibleState
@@ -19,7 +28,10 @@ class OverlayController(
     private val context: Context,
     private val windowManager: WindowManager,
     private val geometry: OverlayGeometry,
-    private val onTap: () -> Unit,
+    private val petSizeDp: Int,
+    private val initialPosition: Pair<Int, Int>?,
+    private val onPositionSettled: (Int, Int) -> Unit,
+    private val interactions: OverlayInteractionCallbacks,
 ) : UiSink {
     private var petView: WebView? = null
     private var bubbleView: WebView? = null
@@ -28,6 +40,10 @@ class OverlayController(
     private var bubbleParams: WindowManager.LayoutParams? = null
     private var placementTracker: OverlayPlacementTracker? = null
     private var componentCallbacks: ComponentCallbacks? = null
+    private var popupWindow: PopupWindow? = null
+    private var flingScroller: OverScroller? = null
+    private var flingRunnable: Runnable? = null
+    private var savedPosition = initialPosition
 
     fun show() {
         if (petView != null || bubbleView != null) return
@@ -36,7 +52,7 @@ class OverlayController(
         val pet = WebView(context)
         val bubble = WebView(context)
         val newRenderer = WebRenderer(pet, bubble)
-        val newPetParams = OverlayWindowSpec.pet().toLayoutParams(density)
+        val newPetParams = OverlayWindowSpec.pet(petSizeDp).toLayoutParams(density)
         val newBubbleParams = OverlayWindowSpec.bubble().toLayoutParams(density)
         val tracker = OverlayPlacementTracker(geometry, ::safeBounds)
 
@@ -46,12 +62,21 @@ class OverlayController(
         petParams = newPetParams
         bubbleParams = newBubbleParams
         placementTracker = tracker
-        applyPlacement(tracker.initialPlacement())
+        applyPlacement(tracker.initialPlacement(savedPosition))
         pet.setOnTouchListener(
             PetGestureController(
                 classifier = GestureClassifier.fromDensity(density),
+                isStuck = { placementTracker?.isStuck == true },
+                onDragStart = { fromStuck ->
+                    stopFling()
+                    interactions.onDragStarted(fromStuck)
+                },
                 onMove = ::moveBy,
-                onTap = onTap,
+                onDragEnd = { cancelled, fling -> finishDrag(cancelled, fling) },
+                onTap = interactions::dispatchTap,
+                onDoubleTap = interactions::dispatchDoubleTap,
+                onLongPress = interactions::dispatchLongPress,
+                onFling = ::startFling,
             ),
         )
         var bubbleAdded = false
@@ -74,6 +99,53 @@ class OverlayController(
         applyPlacement(tracker.moveBy(deltaX, deltaY))
     }
 
+    fun showHeartParticles() {
+        renderer?.showHeartParticles()
+    }
+
+    fun resetPosition() {
+        val placement = placementTracker?.initialPlacement() ?: return
+        applyPlacement(placement)
+        settlePosition(placement)
+    }
+
+    fun showMiniMenu(actions: MiniMenuActions) {
+        val anchor = petView ?: return
+        popupWindow?.dismiss()
+        val density = context.resources.displayMetrics.density
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((8 * density).toInt(), (6 * density).toInt(), (8 * density).toInt(), (6 * density).toInt())
+            setBackgroundColor(Color.WHITE)
+        }
+        listOf(
+            "戳一下" to actions.onPoke,
+            "摸摸头" to actions.onPetHead,
+            "隐藏" to actions.onHide,
+            "设置" to actions.onSettings,
+        ).forEach { (label, action) ->
+            content.addView(Button(context).apply {
+                text = label
+                isAllCaps = false
+                setOnClickListener {
+                    popupWindow?.dismiss()
+                    action()
+                }
+            })
+        }
+        popupWindow = PopupWindow(
+            content,
+            (132 * density).toInt(),
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            true,
+        ).apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            isOutsideTouchable = true
+            setOnDismissListener { if (popupWindow === this) popupWindow = null }
+            showAsDropDown(anchor, 0, -(petSizeDp * density).toInt(), Gravity.CENTER_HORIZONTAL)
+        }
+    }
+
     private fun reclampToCurrentBounds() {
         val tracker = placementTracker ?: return
         applyPlacement(tracker.reclampToCurrentBounds())
@@ -88,6 +160,8 @@ class OverlayController(
         val bubble = bubbleView
         if (pet == null && bubble == null) return
         pet?.setOnTouchListener(null)
+        stopFling()
+        popupWindow?.dismiss()
         pet?.let(::removeViewIgnoringAlreadyRemoved)
         bubble?.let(::removeViewIgnoringAlreadyRemoved)
         pet?.stopLoading()
@@ -122,6 +196,7 @@ class OverlayController(
         petParams = null
         bubbleParams = null
         placementTracker = null
+        popupWindow = null
     }
 
     private fun applyPlacement(placement: OverlayPlacementPx) {
@@ -135,6 +210,70 @@ class OverlayController(
         currentPetParams.y = placement.petY
         if (bubble.isAttachedToWindow) windowManager.updateViewLayout(bubble, currentBubbleParams)
         if (pet.isAttachedToWindow) windowManager.updateViewLayout(pet, currentPetParams)
+    }
+
+    private fun finishDrag(cancelled: Boolean, fling: FlingGesture?) {
+        val tracker = placementTracker ?: return
+        val result = tracker.finishDrag(allowSnap = !cancelled && fling == null)
+        applyPlacement(result.placement)
+        settlePosition(result.placement)
+        interactions.onDragEnded(result.edge != null)
+    }
+
+    private fun startFling(fling: FlingGesture) {
+        val pet = petView ?: return
+        val tracker = placementTracker ?: return
+        val start = tracker.currentPlacement ?: return
+        val bounds = safeBounds()
+        val maxX = (bounds.right - geometry.petSizePx).coerceAtLeast(bounds.left)
+        val maxY = (bounds.bottom - geometry.petSizePx).coerceAtLeast(bounds.top)
+        val overfling = ViewConfiguration.get(context).scaledOverflingDistance
+        val scroller = OverScroller(context).apply {
+            fling(
+                start.petX,
+                start.petY,
+                fling.velocityX.toInt(),
+                fling.velocityY.toInt(),
+                bounds.left,
+                maxX,
+                bounds.top,
+                maxY,
+                overfling,
+                overfling,
+            )
+        }
+        flingScroller = scroller
+        var previousX = start.petX
+        var previousY = start.petY
+        lateinit var animation: Runnable
+        animation = Runnable {
+            if (flingScroller !== scroller || petView !== pet) return@Runnable
+            if (scroller.computeScrollOffset()) {
+                moveBy((scroller.currX - previousX).toFloat(), (scroller.currY - previousY).toFloat())
+                previousX = scroller.currX
+                previousY = scroller.currY
+                pet.postOnAnimation(animation)
+            } else {
+                flingScroller = null
+                flingRunnable = null
+                tracker.currentPlacement?.let(::settlePosition)
+            }
+        }
+        flingRunnable = animation
+        interactions.onFling(fling, fling.direction.expression)
+        pet.postOnAnimation(animation)
+    }
+
+    private fun stopFling() {
+        flingScroller?.forceFinished(true)
+        petView?.let { view -> flingRunnable?.let(view::removeCallbacks) }
+        flingScroller = null
+        flingRunnable = null
+    }
+
+    private fun settlePosition(placement: OverlayPlacementPx) {
+        savedPosition = placement.petX to placement.petY
+        onPositionSettled(placement.petX, placement.petY)
     }
 
     @Suppress("DEPRECATION")

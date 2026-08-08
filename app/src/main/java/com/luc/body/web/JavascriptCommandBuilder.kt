@@ -4,12 +4,15 @@ import org.json.JSONObject
 
 object JavascriptCommandBuilder {
     private val supportedExpressions = setOf("idle", "happy", "angry", "sleepy")
-    private val supportedBubbleStyles = setOf("normal", "whisper", "shout", "love")
+    private val supportedBubbleStyles = setOf("normal", "whisper", "shout", "love", "sleepy")
 
     fun setExpression(expression: String): String {
         val safeExpression = expression.lowercase().takeIf(supportedExpressions::contains) ?: "idle"
         return "window.LucPet.setExpression(${JSONObject.quote(safeExpression)})"
     }
+
+    fun setSprite(url: String, stateId: String): String =
+        "window.LucPet.setSprite(${JSONObject.quote(url)},${JSONObject.quote(stateId)})"
 
     fun showBubble(text: String, style: String, revision: String): String {
         val safeStyle = style.lowercase().takeIf(supportedBubbleStyles::contains) ?: "normal"

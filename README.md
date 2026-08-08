@@ -1,15 +1,37 @@
 # Luc
 
-Luc 是一个 Android 16 桌面悬浮小宠物 MVP：它显示透明宠物与气泡，点击宠物会上报 tap 事件，并从 Supabase REST 轮询最新状态。当前范围只包含单个悬浮宠物、前台服务和 Supabase 状态/事件同步，不包含后台保活承诺、多设备账户体系或生产级 RLS 策略。
+Luc 是一个面向 Android 8.0–16 的桌面悬浮宠物。应用 ID 为 `com.luc.body`，使用双悬浮层分别承载可交互的 Clawd 和全触摸穿透的文字气泡；APK 内只负责“身体”，远端状态通过 Supabase 下发，不在设备内调用 AI/LLM。
+
+V2 已实现 28 个具名状态、37 份 SVG 变体随机池、外部素材覆盖、完整手势、时段/孤独/自言自语/前台 App 感知、Realtime 主通道与 HTTP 轮询降级。37 份内置素材中，35 份逐字节对应清单中的 GitHub Blob，`angry.svg` 与 `sleepy.svg` 是素材板明确标注的自定义原件；第 26 张 `clawd-collapse-sleep.svg` 已按上游原件纳入为 `night.svg`。
+
+## 功能
+
+- 90×90dp 默认宠物层、180×120dp 气泡层；宠物大小可设为 60–120dp。
+- raw 坐标拖拽、10dp 阈值、300ms 双击、500ms 长按菜单、四向 fling 与贴边吸附。
+- tap/双击/吸附点击 1.2 秒本地锁；拖拽不可被远端状态打断。
+- Supabase Realtime UPDATE、25 秒心跳、指数退避重连、失败后 5 秒 HTTP 轮询。
+- 事件满 3 条或 10 秒批量上报；REST 与 WebSocket 均携带 `apikey` 和 Bearer。
+- 开机自启、常驻通知“显示/隐藏”“退出”、位置恢复以及 10 项设置。
 
 ## 安装与使用
 
-1. 在 Android 16 设备上安装 debug APK 或 GitHub Actions 产出的 release APK。
-2. 打开 Luc，点击“启动”。系统会先要求允许“显示在其他应用上层”；返回应用后，Android 13 及以上还会请求通知权限。通知被拒绝时仍会继续尝试启动，但前台服务通知的可见性受系统控制。
-3. 允许后，宠物和气泡会显示在其他应用上方。拖动宠物可调整位置，点击宠物会发送 tap 事件。
-4. 回到 Luc 点击“停止”即可停止前台服务并移除两个悬浮窗。
+1. 安装 GitHub Actions 产出的 `Luc-0.1.0-release.apk`。
+2. 首次打开时按说明依次处理悬浮窗权限、电池优化白名单和使用情况访问；只有悬浮窗权限是运行必需，后两项可跳过。Android 13 及以上在启动时另行请求通知权限。
+3. 填写 Supabase URL 与 publishable key，保存设置后点击“启动 Luc”。留空时本地手势与行为仍可运行，但不会连接远端。
+4. 单击、双击、长按或甩动宠物进行互动；长按菜单可戳一下、摸摸头、隐藏或打开设置。隐藏后可从常驻通知恢复。
+5. “停止 Luc”或通知中的“退出”会停止前台服务并移除两个悬浮层。
 
-> Android 的 Doze、省电策略和厂商后台管控可能终止前台服务或限制网络；这是当前 MVP 的已知限制。请在目标设备上手动验证通知、悬浮窗和重启后的行为。
+> Android 的 Doze 和厂商后台管控仍可能限制网络或终止进程；电池白名单是建议项，不是规避系统规则的保证。
+
+## 权限
+
+| 权限/设置 | 用途 | 必需性 |
+| --- | --- | --- |
+| 显示在其他应用上层 | 创建宠物和气泡悬浮层 | 必需 |
+| 通知 | 显示前台服务状态和操作按钮 | Android 13+ 建议 |
+| 忽略电池优化 | 降低后台连接被中断的概率 | 可选 |
+| 使用情况访问 | 每 5 秒识别前台 App，用于 idle/peeking/waving | 可选 |
+| 开机完成广播 | 按设置自动恢复桌宠 | 默认开启，可关闭 |
 
 ## 本地配置与构建
 
@@ -29,11 +51,11 @@ $env:SUPABASE_PUBLISHABLE_KEY = 'YOUR_SUPABASE_PUBLISHABLE_KEY'
 .\gradlew.bat --no-daemon assembleDebug
 ```
 
-客户端对每个 Supabase REST 请求同时发送两项 header：`apikey: <publishable key>` 与 `Authorization: Bearer <publishable key>`。后端/RLS 配置必须接受这份双 header 契约。MVP 期间若采用 `allow_all` RLS 策略，任何持有 publishable key 的客户端都可能获得过宽访问权限；上线前必须替换为最小权限的策略。
+客户端对每个 Supabase REST 请求同时发送两项 header：`apikey: <publishable key>` 与 `Authorization: Bearer <publishable key>`。当前 MVP 后端若使用 `allow_all` RLS，任何持有 publishable key 的客户端都可能获得过宽访问权限；公开发布前应替换为最小权限策略。本项目不包含数据库迁移，也不会修改现有表或 RLS。
 
 ## GitHub Actions 签名发布
 
-推送到 `main` 或手动运行 **Build release APK** 工作流会构建并上传 `Luc-0.1.0-release.apk`。在仓库 **Settings → Secrets and variables → Actions** 中配置下列六个 secrets（名称必须完全一致）：
+推送到 `main` 或手动运行 **Build release APK** 工作流会构建并上传签名的 `Luc-0.1.0-release.apk`；针对 `main` 的 pull request 会运行单测、lint 和 debug 构建。在仓库 **Settings → Secrets and variables → Actions** 中配置下列六个 secrets（名称必须完全一致）：
 
 | Secret | 用途 |
 | --- | --- |
