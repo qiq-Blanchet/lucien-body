@@ -280,8 +280,24 @@ class OverlayController(
     private fun safeBounds(): SafeBoundsPx {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val metrics = windowManager.currentWindowMetrics
-            val insets = metrics.windowInsets.getInsetsIgnoringVisibility(
+            val systemInsets = metrics.windowInsets.getInsetsIgnoringVisibility(
                 WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout(),
+            )
+            val gestureInsets = metrics.windowInsets.getInsets(
+                WindowInsets.Type.mandatorySystemGestures(),
+            )
+            val insets = EdgeInsetsPx(
+                left = systemInsets.left,
+                top = systemInsets.top,
+                right = systemInsets.right,
+                bottom = systemInsets.bottom,
+            ).maxPerEdge(
+                EdgeInsetsPx(
+                    left = gestureInsets.left,
+                    top = gestureInsets.top,
+                    right = gestureInsets.right,
+                    bottom = gestureInsets.bottom,
+                ),
             )
             return SafeBoundsPx(
                 left = metrics.bounds.left + insets.left,
@@ -295,15 +311,23 @@ class OverlayController(
         val rootInsets = petView?.rootWindowInsets
         if (rootInsets != null) {
             val realSize = Point().also(display::getRealSize)
+            val systemInsets = EdgeInsetsPx(
+                left = rootInsets.stableInsetLeft,
+                top = rootInsets.stableInsetTop,
+                right = rootInsets.stableInsetRight,
+                bottom = rootInsets.stableInsetBottom,
+            )
+            val gestureInsets = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                rootInsets.mandatorySystemGestureInsets.let {
+                    EdgeInsetsPx(it.left, it.top, it.right, it.bottom)
+                }
+            } else {
+                ZERO_INSETS
+            }
             return LegacySafeBounds.fromRealDisplay(
                 width = realSize.x,
                 height = realSize.y,
-                systemInsets = EdgeInsetsPx(
-                    left = rootInsets.stableInsetLeft,
-                    top = rootInsets.stableInsetTop,
-                    right = rootInsets.stableInsetRight,
-                    bottom = rootInsets.stableInsetBottom,
-                ),
+                systemInsets = systemInsets.maxPerEdge(gestureInsets),
                 cutoutInsets = displayCutoutInsets(rootInsets),
             )
         }

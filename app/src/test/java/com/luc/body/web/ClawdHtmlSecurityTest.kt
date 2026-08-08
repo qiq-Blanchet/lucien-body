@@ -8,13 +8,14 @@ import org.junit.Test
 
 class ClawdHtmlSecurityTest {
     @Test
-    fun `sprites render in two script-disabled iframe documents`() {
+    fun `sprites render as isolated images instead of transparent sandbox frames`() {
         val html = File("src/main/assets/clawd.html").readText()
 
-        assertEquals(2, Regex("<iframe\\b").findAll(html).count())
-        assertEquals(2, Regex("sandbox=\"\"").findAll(html).count())
+        assertEquals(2, Regex("<img\\b").findAll(html).count())
+        assertEquals(0, Regex("<iframe\\b").findAll(html).count())
         assertTrue(html.contains("incoming.onload"))
         assertTrue(html.contains("currentRevision !== revision"))
+        assertTrue(html.contains("outgoing.removeAttribute(\"src\")"))
         assertFalse(html.contains("innerHTML"))
     }
 
