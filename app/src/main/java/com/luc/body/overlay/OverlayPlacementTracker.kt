@@ -21,12 +21,21 @@ class OverlayPlacementTracker(
     fun moveBy(deltaX: Float, deltaY: Float): OverlayPlacementPx {
         val requestedPetX = checkNotNull(authoritativePetX) { "initial placement is required" } + deltaX
         val requestedPetY = checkNotNull(authoritativePetY) { "initial placement is required" } + deltaY
-        return update(
+        val placement = if (isStuck) {
+            geometry.moveSnappedPet(
+                petX = requestedPetX.roundToInt(),
+                petY = requestedPetY.roundToInt(),
+                bounds = boundsProvider(),
+            )
+        } else {
             geometry.movePet(
                 petX = requestedPetX.roundToInt(),
                 petY = requestedPetY.roundToInt(),
                 bounds = boundsProvider(),
-            ),
+            )
+        }
+        return update(
+            placement,
             requestedPetX,
             requestedPetY,
         )
@@ -35,12 +44,21 @@ class OverlayPlacementTracker(
     fun reclampToCurrentBounds(): OverlayPlacementPx {
         val requestedPetX = checkNotNull(authoritativePetX) { "initial placement is required" }
         val requestedPetY = checkNotNull(authoritativePetY) { "initial placement is required" }
-        return update(
+        val placement = if (isStuck) {
+            geometry.moveSnappedPet(
+                petX = requestedPetX.roundToInt(),
+                petY = requestedPetY.roundToInt(),
+                bounds = boundsProvider(),
+            )
+        } else {
             geometry.movePet(
                 petX = requestedPetX.roundToInt(),
                 petY = requestedPetY.roundToInt(),
                 bounds = boundsProvider(),
-            ),
+            )
+        }
+        return update(
+            placement,
             requestedPetX,
             requestedPetY,
         )

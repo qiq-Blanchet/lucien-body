@@ -156,6 +156,7 @@ class OverlayService : Service() {
                 if (!isStuck && random.nextInt(5) == 0) coordinator.onTransientState(Expression.CLINGY)
             },
             onFling = { fling, expression -> handleFling(coordinator, fling, expression) },
+            onFlingSettled = coordinator::setStuck,
         )
         controller = OverlayController(
             context = this,

@@ -72,7 +72,7 @@ class OverlayController(
                     interactions.onDragStarted(fromStuck)
                 },
                 onMove = ::moveBy,
-                onDragEnd = { cancelled, fling -> finishDrag(cancelled, fling) },
+                onDragEnd = { cancelled, _ -> finishDrag(cancelled) },
                 onTap = interactions::dispatchTap,
                 onDoubleTap = interactions::dispatchDoubleTap,
                 onLongPress = interactions::dispatchLongPress,
@@ -212,9 +212,9 @@ class OverlayController(
         if (pet.isAttachedToWindow) windowManager.updateViewLayout(pet, currentPetParams)
     }
 
-    private fun finishDrag(cancelled: Boolean, fling: FlingGesture?) {
+    private fun finishDrag(cancelled: Boolean) {
         val tracker = placementTracker ?: return
-        val result = tracker.finishDrag(allowSnap = !cancelled && fling == null)
+        val result = tracker.finishDrag(allowSnap = !cancelled)
         applyPlacement(result.placement)
         settlePosition(result.placement)
         interactions.onDragEnded(result.edge != null)
@@ -223,6 +223,7 @@ class OverlayController(
     private fun startFling(fling: FlingGesture) {
         val pet = petView ?: return
         val tracker = placementTracker ?: return
+        if (tracker.isStuck) return
         val start = tracker.currentPlacement ?: return
         val bounds = safeBounds()
         val maxX = (bounds.right - geometry.petSizePx).coerceAtLeast(bounds.left)
@@ -256,7 +257,10 @@ class OverlayController(
             } else {
                 flingScroller = null
                 flingRunnable = null
-                tracker.currentPlacement?.let(::settlePosition)
+                val result = tracker.finishDrag()
+                applyPlacement(result.placement)
+                settlePosition(result.placement)
+                interactions.onFlingSettled(result.edge != null)
             }
         }
         flingRunnable = animation

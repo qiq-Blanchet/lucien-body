@@ -41,13 +41,10 @@
         incoming.onload = () => {
           if (currentRevision !== revision) return;
           incoming.className = `pet-frame pet--${state} pet--visible`;
-          if (outgoing) outgoing.className = "pet-frame pet--fading";
-          window.setTimeout(() => {
-            if (currentRevision === revision && outgoing) {
-              outgoing.removeAttribute("src");
-              outgoing.className = "pet-frame";
-            }
-          }, 200);
+          if (outgoing) {
+            outgoing.removeAttribute("src");
+            outgoing.className = "pet-frame";
+          }
           activeIndex = incomingIndex;
         };
         incoming.onerror = () => {
