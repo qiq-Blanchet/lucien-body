@@ -40,6 +40,8 @@ class StateCoordinator(
     private var latestRemoteState: RemoteState? = null
     private var remoteSequence = 0L
     private var bufferedRemoteState: RemoteState? = null
+    private var remoteExpiryGeneration = 0L
+    private var remoteExpiryTask: Cancelable? = null
 
     private var stuck = false
     private var stuckSequence = 0L
@@ -81,6 +83,7 @@ class StateCoordinator(
         requireOwnerThread()
         if (closed) return
 
+        cancelRemoteExpiry()
         latestRemoteState = null
         bufferedRemoteState = null
         clearActiveBubble()
@@ -287,6 +290,7 @@ class StateCoordinator(
         closed = true
         cancelLocalReaction()
         cancelTransient()
+        cancelRemoteExpiry()
         clearActiveBubble()
         bufferedRemoteState = null
         requestedCandidate = null
@@ -295,10 +299,12 @@ class StateCoordinator(
     }
 
     private fun applyRemoteState(state: RemoteState) {
+        cancelRemoteExpiry()
         latestRemoteState = state
         remoteSequence = nextSequence()
         clearActiveBubble()
         val text = state.bubbleText
+        val durationMs = bubbleDurationMs(text.orEmpty(), bubbleBaseSeconds)
         if (text == null) {
             renderCurrent()
         } else {
@@ -306,9 +312,18 @@ class StateCoordinator(
                 text = text,
                 style = state.bubbleStyle,
                 revision = state.updatedAt,
-                durationMs = bubbleDurationMs(text, bubbleBaseSeconds),
+                durationMs = null,
             )
         }
+        val generation = ++remoteExpiryGeneration
+        val task = scheduler.schedule(durationMs) {
+            onRemoteStateExpired(generation, state.updatedAt)
+        }
+        if (closed || generation != remoteExpiryGeneration || latestRemoteState !== state) {
+            task.cancel()
+            return
+        }
+        remoteExpiryTask = task
     }
 
     private fun installBubble(
@@ -369,6 +384,17 @@ class StateCoordinator(
         renderCurrent()
     }
 
+    private fun onRemoteStateExpired(generation: Long, revision: String) {
+        requireOwnerThread()
+        if (closed || generation != remoteExpiryGeneration || latestRemoteState?.updatedAt != revision) return
+
+        remoteExpiryTask = null
+        remoteExpiryGeneration += 1
+        latestRemoteState = null
+        if (activeBubble?.revision == revision) clearActiveBubble()
+        renderCurrent()
+    }
+
     private fun onBubbleExpired(generation: Long) {
         requireOwnerThread()
         if (closed || generation != bubbleGeneration || activeBubble == null) return
@@ -392,6 +418,12 @@ class StateCoordinator(
         transientTask?.cancel()
         transientTask = null
         transientCandidate = null
+    }
+
+    private fun cancelRemoteExpiry() {
+        remoteExpiryGeneration += 1
+        remoteExpiryTask?.cancel()
+        remoteExpiryTask = null
     }
 
     private fun clearActiveBubble(): Boolean {
