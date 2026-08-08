@@ -3,10 +3,21 @@ package com.luc.body.overlay
 import com.luc.body.gesture.FlingDirection
 import com.luc.body.gesture.FlingGesture
 import com.luc.body.state.Expression
+import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OverlayInteractionCallbacksTest {
+    @Test
+    fun `service defers fling settlement callback until coordinator is initialized`() {
+        val source = File("src/main/java/com/luc/body/OverlayService.kt").readText()
+
+        assertFalse(source.contains("onFlingSettled = coordinator::"))
+        assertTrue(source.contains("onFlingSettled = { isStuck -> coordinator.setStuck(isStuck) }"))
+    }
+
     @Test
     fun `callback bundle exposes heart menu drag snap and fling wiring points`() {
         val events = mutableListOf<String>()
