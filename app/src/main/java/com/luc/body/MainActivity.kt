@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.SeekBar
@@ -25,7 +26,7 @@ import com.luc.body.util.PrefsManager
 
 class MainActivity : ComponentActivity() {
     private lateinit var prefs: PrefsManager
-    private var permissionGuideStep = 0
+    private var permissionGuideStep = initialPermissionGuideStep()
     private var permissionDialogShowing = false
     private var returningFromPermissionSettings = false
 
@@ -45,6 +46,14 @@ class MainActivity : ComponentActivity() {
         bindSettings()
 
         findViewById<Button>(R.id.start_button).setOnClickListener { startFromVisibleClick() }
+        findViewById<Button>(R.id.app_details_button).apply {
+            visibility = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) View.VISIBLE else View.GONE
+            setOnClickListener { openAppDetailsSettings() }
+        }
+        findViewById<TextView>(R.id.restricted_settings_help).visibility =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.overlay_permission_button).setOnClickListener { openOverlaySettings() }
+        findViewById<Button>(R.id.usage_permission_button).setOnClickListener { openUsageSettings() }
         findViewById<Button>(R.id.stop_button).setOnClickListener {
             stopService(Intent(this, OverlayService::class.java))
         }
@@ -192,6 +201,15 @@ class MainActivity : ComponentActivity() {
     private fun showNextPermissionGuide() {
         if (permissionDialogShowing) return
         when (permissionGuideStep) {
+            GUIDE_RESTRICTED_SETTINGS -> {
+                permissionGuideStep++
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+                    showRestrictedSettingsDialog()
+                } else {
+                    showNextPermissionGuide()
+                }
+            }
+
             GUIDE_OVERLAY -> {
                 permissionGuideStep++
                 if (Settings.canDrawOverlays(this)) showNextPermissionGuide() else showPermissionDialog(
@@ -224,6 +242,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun showRestrictedSettingsDialog() {
+        permissionDialogShowing = true
+        AlertDialog.Builder(this)
+            .setTitle(R.string.restricted_settings_title)
+            .setMessage(R.string.restricted_settings_reason)
+            .setPositiveButton(R.string.open_app_details_button) { _, _ ->
+                permissionDialogShowing = false
+                openAppDetailsSettings()
+            }
+            .setNegativeButton(R.string.restricted_settings_done) { _, _ ->
+                permissionDialogShowing = false
+                showNextPermissionGuide()
+            }
+            .setOnCancelListener {
+                permissionDialogShowing = false
+                showNextPermissionGuide()
+            }
+            .show()
+    }
+
     private fun showPermissionDialog(
         title: Int,
         message: Int,
@@ -254,38 +292,62 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openOverlaySettings() {
-        openPermissionSettings(
-            Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName"),
-            ),
+        val primaryIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+        } else {
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, packageUri())
+        }
+        openFirstAvailableSettings(
+            primaryIntent,
+            appDetailsIntent(),
+            Intent(Settings.ACTION_SETTINGS),
         )
     }
 
     private fun openBatterySettings() {
-        val request = Intent(
-            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-            Uri.parse("package:$packageName"),
+        openFirstAvailableSettings(
+            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, packageUri()),
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+            appDetailsIntent(),
         )
-        try {
-            openPermissionSettings(request)
-        } catch (_: ActivityNotFoundException) {
-            openPermissionSettings(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-        }
     }
 
     private fun openUsageSettings() {
-        try {
-            openPermissionSettings(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-        } catch (_: ActivityNotFoundException) {
-            openPermissionSettings(Intent(Settings.ACTION_SETTINGS))
-        }
+        openFirstAvailableSettings(
+            Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+            appDetailsIntent(),
+            Intent(Settings.ACTION_SETTINGS),
+        )
     }
 
-    private fun openPermissionSettings(intent: Intent) {
-        returningFromPermissionSettings = true
-        startActivity(intent)
+    private fun openAppDetailsSettings() {
+        openFirstAvailableSettings(
+            appDetailsIntent(),
+            Intent(Settings.ACTION_APPLICATION_SETTINGS),
+            Intent(Settings.ACTION_SETTINGS),
+        )
     }
+
+    private fun openFirstAvailableSettings(vararg intents: Intent) {
+        intents.forEach { intent ->
+            try {
+                returningFromPermissionSettings = true
+                startActivity(intent)
+                return
+            } catch (_: ActivityNotFoundException) {
+                // Try the next public Settings entry point on this device.
+            } catch (_: SecurityException) {
+                // OEM Settings can reject an otherwise valid public action.
+            }
+        }
+        returningFromPermissionSettings = false
+        Toast.makeText(this, R.string.permission_settings_unavailable, Toast.LENGTH_LONG).show()
+    }
+
+    private fun packageUri(): Uri = Uri.parse("package:$packageName")
+
+    private fun appDetailsIntent(): Intent =
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri())
 
     private fun isIgnoringBatteryOptimizations(): Boolean =
         getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
@@ -301,9 +363,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
-        const val GUIDE_OVERLAY = 0
-        const val GUIDE_BATTERY = 1
-        const val GUIDE_USAGE = 2
+        const val GUIDE_RESTRICTED_SETTINGS = 0
+        const val GUIDE_OVERLAY = 1
+        const val GUIDE_BATTERY = 2
+        const val GUIDE_USAGE = 3
         const val STATE_PERMISSION_GUIDE_STEP = "permission_guide_step"
+
+        fun initialPermissionGuideStep(): Int =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+                GUIDE_RESTRICTED_SETTINGS
+            } else {
+                GUIDE_OVERLAY
+            }
     }
 }

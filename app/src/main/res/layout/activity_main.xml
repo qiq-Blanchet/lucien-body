@@ -25,6 +25,35 @@
             android:text="@string/permission_status_placeholder" />
 
         <TextView
+            android:id="@+id/restricted_settings_help"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/restricted_settings_inline_help"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/app_details_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/open_app_details_button"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/overlay_permission_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/open_overlay_permission_button" />
+
+        <Button
+            android:id="@+id/usage_permission_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/open_usage_permission_button" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"

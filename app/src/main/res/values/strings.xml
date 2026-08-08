@@ -6,6 +6,14 @@
     <string name="permission_granted">已允许</string>
     <string name="permission_required">需要允许</string>
     <string name="permission_optional">未允许（仍可启动）</string>
+    <string name="restricted_settings_title">Android 16 需先允许受限设置</string>
+    <string name="restricted_settings_reason">如果 Luc 是从 APK 文件安装的，Android 16 会先锁住悬浮窗和使用情况访问。请打开 Luc 的应用详情，点右上角菜单，再点“允许受限设置”；返回 Luc 后再开启两项权限。如果页面没有这个选项，说明当前安装来源不受限制，可直接继续。</string>
+    <string name="restricted_settings_inline_help">Android 16：若悬浮窗或使用情况访问的开关不可点，请先打开 Luc 应用详情 → 右上角菜单 → 允许受限设置，再回来分别开启权限。</string>
+    <string name="restricted_settings_done">已允许 / 没有此项</string>
+    <string name="open_app_details_button">打开 Luc 应用详情</string>
+    <string name="open_overlay_permission_button">打开悬浮窗权限</string>
+    <string name="open_usage_permission_button">打开使用情况访问权限</string>
+    <string name="permission_settings_unavailable">系统没有提供可用的权限设置入口，请从“设置 → 应用 → Luc”手动打开。</string>
     <string name="start_button">启动 Luc</string>
     <string name="stop_button">停止 Luc</string>
     <string name="notification_channel_name">Luc 桌宠</string>
@@ -30,11 +38,11 @@
     <string name="permission_continue">去设置</string>
     <string name="permission_not_now">暂不设置</string>
     <string name="overlay_permission_title">允许悬浮窗</string>
-    <string name="overlay_permission_reason">Luc 需要悬浮窗权限才能显示在其他 app 上方。这是运行桌宠的必需权限；不允许时 Luc 无法启动。</string>
+    <string name="overlay_permission_reason">Luc 需要悬浮窗权限才能显示在其他 app 上方。这是运行桌宠的必需权限；不允许时 Luc 无法启动。Android 16 从 APK 安装时，若开关不可点，请先在 Luc 应用详情的右上角菜单中允许受限设置。</string>
     <string name="battery_permission_title">允许后台陪伴</string>
     <string name="battery_permission_reason">建议将 Luc 加入电池优化白名单，避免系统在后台中断桌宠和网络连接。跳过不会阻止启动，但后台运行可能不稳定。</string>
     <string name="usage_permission_title">允许前台 app 感知</string>
-    <string name="usage_permission_reason">可选：使用情况访问让 Luc 判断当前前台 app，从而显示 peeking、waving 等状态。Luc 不读取 app 内的内容；跳过后仅关闭这项感知。</string>
+    <string name="usage_permission_reason">可选：使用情况访问让 Luc 判断当前前台 app，从而显示 peeking、waving 等状态。Luc 不读取 app 内的内容；跳过后仅关闭这项感知。Android 16 从 APK 安装时，若开关不可点，请先在 Luc 应用详情中允许受限设置。</string>
     <string name="notification_permission_title">允许通知</string>
     <string name="notification_permission_reason">Android 13 及以上建议允许通知，以便看到 Luc 的常驻状态以及“显示/隐藏”和“退出”操作。</string>
 </resources>
