@@ -71,6 +71,18 @@ class PollingLoopTest {
     }
 
     @Test
+    fun fetchOnceDeliversStateWithoutSchedulingPolling() {
+        server.enqueue(stateResponse("happy"))
+
+        loop.fetchOnce()
+
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        ownerExecutor.runNext()
+        assertEquals(listOf(Expression.HAPPY), states)
+        assertEquals(0, scheduler.activeTaskCount)
+    }
+
+    @Test
     fun eachCompletedFetchSchedulesExactlyOneNextFetchWithoutCatchUp() {
         server.enqueue(stateResponse("happy"))
         server.enqueue(stateResponse("sleepy"))

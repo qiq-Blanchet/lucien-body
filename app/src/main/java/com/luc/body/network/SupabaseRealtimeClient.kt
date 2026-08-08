@@ -134,6 +134,7 @@ class SupabaseRealtimeClient(
         val message = runCatching { JSONObject(text) }.getOrNull() ?: return
         when (message.optString("event")) {
             "phx_reply" -> handleReply(runGeneration, attemptId, webSocket, message)
+            "system" -> handleSystemMessage(runGeneration, attemptId, webSocket, message)
             "postgres_changes" -> handlePostgresChange(runGeneration, attemptId, message)
             "phx_error", "phx_close" -> {
                 handleDisconnected(runGeneration, attemptId)
@@ -169,7 +170,7 @@ class SupabaseRealtimeClient(
             if (!isAttemptCurrentLocked(runGeneration, attemptId) || joined) return
             if (message.optString("ref") != joinRef) return
             val status = message.optJSONObject("payload")?.optString("status")
-            if (status != "ok") return@synchronized false
+            if (status != "ok" || !hasExpectedPostgresSubscription(message)) return@synchronized false
             joined = true
             joinTimeoutTask?.cancel()
             joinTimeoutTask = null
@@ -185,6 +186,18 @@ class SupabaseRealtimeClient(
         }
         pollingLoop.stop()
         scheduleHeartbeat(runGeneration, attemptId, webSocket)
+    }
+
+    private fun handleSystemMessage(
+        runGeneration: Long,
+        attemptId: Long,
+        webSocket: WebSocket,
+        message: JSONObject,
+    ) {
+        val payload = message.optJSONObject("payload") ?: return
+        if (payload.optString("extension") != "postgres_changes" || payload.optString("status") == "ok") return
+        handleDisconnected(runGeneration, attemptId)
+        webSocket.cancel()
     }
 
     private fun handleHeartbeatReply(
@@ -355,6 +368,19 @@ class SupabaseRealtimeClient(
         .put("join_ref", messageRef)
         .put("ref", messageRef)
         .toString()
+
+    private fun hasExpectedPostgresSubscription(message: JSONObject): Boolean {
+        val changes = message.optJSONObject("payload")
+            ?.optJSONObject("response")
+            ?.optJSONArray("postgres_changes")
+            ?: return false
+        return (0 until changes.length()).any { index ->
+            val change = changes.optJSONObject(index) ?: return@any false
+            change.optString("event") == "UPDATE" &&
+                change.optString("schema") == "public" &&
+                change.optString("table") == "clawd_state"
+        }
+    }
 
     private fun heartbeatMessage(messageRef: String): String = JSONObject()
         .put("topic", "phoenix")

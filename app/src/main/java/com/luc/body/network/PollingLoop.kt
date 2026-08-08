@@ -18,6 +18,14 @@ class PollingLoop(
     private var activeCall: Call? = null
     private var scheduledPoll: Cancelable? = null
 
+    fun fetchOnce() {
+        client.fetchLatest { result ->
+            ownerExecutor.execute {
+                result.getOrNull()?.let(onState)
+            }
+        }
+    }
+
     fun start() {
         val runGeneration = synchronized(lock) {
             if (started) return
