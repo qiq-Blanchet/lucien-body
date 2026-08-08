@@ -25,6 +25,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+private open class ClosingWebSocketListener : WebSocketListener() {
+    override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+        webSocket.close(code, null)
+    }
+}
+
 class SupabaseRealtimeClientTest {
     private lateinit var server: MockWebServer
     private lateinit var httpClient: OkHttpClient
@@ -42,9 +48,9 @@ class SupabaseRealtimeClientTest {
     @After
     fun tearDown() {
         if (::realtime.isInitialized) realtime.close()
-        httpClient.dispatcher.executorService.shutdownNow()
-        httpClient.connectionPool.evictAll()
         server.shutdown()
+        httpClient.connectionPool.evictAll()
+        httpClient.dispatcher.executorService.shutdownNow()
     }
 
     @Test
@@ -56,7 +62,7 @@ class SupabaseRealtimeClientTest {
         val messages = CopyOnWriteArrayList<JSONObject>()
         server.enqueue(
             MockResponse().withWebSocketUpgrade(
-                object : WebSocketListener() {
+                object : ClosingWebSocketListener() {
                     override fun onMessage(webSocket: WebSocket, text: String) {
                         val message = JSONObject(text)
                         messages += message
@@ -117,7 +123,7 @@ class SupabaseRealtimeClientTest {
         val joined = CountDownLatch(1)
         server.enqueue(
             MockResponse().withWebSocketUpgrade(
-                object : WebSocketListener() {
+                object : ClosingWebSocketListener() {
                     override fun onMessage(webSocket: WebSocket, text: String) {
                         val message = JSONObject(text)
                         if (message.optString("event") == "phx_join") {
@@ -158,7 +164,7 @@ class SupabaseRealtimeClientTest {
     fun missingPostgresSubscriptionStartsHttpFallback() {
         server.enqueue(
             MockResponse().withWebSocketUpgrade(
-                object : WebSocketListener() {
+                object : ClosingWebSocketListener() {
                     override fun onMessage(webSocket: WebSocket, text: String) {
                         val message = JSONObject(text)
                         if (message.optString("event") == "phx_join") {
@@ -189,7 +195,7 @@ class SupabaseRealtimeClientTest {
         val joined = CountDownLatch(1)
         server.enqueue(
             MockResponse().withWebSocketUpgrade(
-                object : WebSocketListener() {
+                object : ClosingWebSocketListener() {
                     override fun onMessage(webSocket: WebSocket, text: String) {
                         val message = JSONObject(text)
                         if (message.optString("event") == "phx_join") {
@@ -236,7 +242,7 @@ class SupabaseRealtimeClientTest {
         val joinReceived = CountDownLatch(1)
         server.enqueue(
             MockResponse().withWebSocketUpgrade(
-                object : WebSocketListener() {
+                object : ClosingWebSocketListener() {
                     override fun onMessage(webSocket: WebSocket, text: String) {
                         if (JSONObject(text).optString("event") == "phx_join") joinReceived.countDown()
                     }
@@ -269,7 +275,7 @@ class SupabaseRealtimeClientTest {
         val heartbeatReceived = CountDownLatch(1)
         server.enqueue(
             MockResponse().withWebSocketUpgrade(
-                object : WebSocketListener() {
+                object : ClosingWebSocketListener() {
                     override fun onMessage(webSocket: WebSocket, text: String) {
                         val message = JSONObject(text)
                         when (message.optString("event")) {
