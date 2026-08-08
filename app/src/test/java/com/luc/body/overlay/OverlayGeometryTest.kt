@@ -15,17 +15,17 @@ class OverlayGeometryTest {
         val placement = geometry.movePet(500, 60, bounds)
 
         assertTrue(placement.bubbleBelowPet)
-        assertEquals(60 + 240, placement.bubbleY)
+        assertEquals(60 + 180, placement.bubbleY)
     }
 
     @Test
     fun initialPlacementUsesSixteenDpBottomRightMarginInsideNonZeroSafeBounds() {
         val placement = geometry.initialPlacement(SafeBoundsPx(50, 100, 1050, 2000))
 
-        assertEquals(778, placement.petX)
-        assertEquals(1_728, placement.petY)
-        assertEquals(570, placement.bubbleX)
-        assertEquals(1_408, placement.bubbleY)
+        assertEquals(838, placement.petX)
+        assertEquals(1_788, placement.petY)
+        assertEquals(690, placement.bubbleX)
+        assertEquals(1_548, placement.bubbleY)
         assertFalse(placement.bubbleBelowPet)
     }
 
@@ -35,7 +35,7 @@ class OverlayGeometryTest {
 
         assertEquals(50, placement.petX)
         assertEquals(50, placement.bubbleX)
-        assertEquals(180, placement.bubbleY)
+        assertEquals(260, placement.bubbleY)
     }
 
     @Test
@@ -44,8 +44,8 @@ class OverlayGeometryTest {
 
         assertEquals(200, placement.petX)
         assertEquals(500, placement.petY)
-        assertEquals(80, placement.bubbleX)
-        assertEquals(180, placement.bubbleY)
+        assertEquals(110, placement.bubbleX)
+        assertEquals(260, placement.bubbleY)
         assertFalse(placement.bubbleBelowPet)
     }
 
@@ -58,5 +58,26 @@ class OverlayGeometryTest {
         assertEquals(100, placement.bubbleX)
         assertEquals(200, placement.bubbleY)
         assertTrue(placement.bubbleBelowPet)
+    }
+
+    @Test
+    fun `snap includes exact fifteen dp outer-edge gap on all four edges`() {
+        val bounds = SafeBoundsPx(50, 100, 1_050, 2_000)
+
+        assertEquals(SnapEdge.LEFT, geometry.snapPet(80, 500, bounds).edge)
+        assertEquals(SnapEdge.TOP, geometry.snapPet(500, 130, bounds).edge)
+        assertEquals(SnapEdge.RIGHT, geometry.snapPet(840, 500, bounds).edge)
+        assertEquals(SnapEdge.BOTTOM, geometry.snapPet(500, 1_790, bounds).edge)
+    }
+
+    @Test
+    fun `snap excludes an outer-edge gap beyond fifteen dp and chooses nearest edge`() {
+        val bounds = SafeBoundsPx(0, 0, 1_000, 1_000)
+
+        assertEquals(null, geometry.snapPet(31, 500, bounds).edge)
+        val nearest = geometry.snapPet(20, 10, bounds)
+        assertEquals(SnapEdge.TOP, nearest.edge)
+        assertEquals(20, nearest.placement.petX)
+        assertEquals(0, nearest.placement.petY)
     }
 }

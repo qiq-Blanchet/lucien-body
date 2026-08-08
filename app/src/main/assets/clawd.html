@@ -6,17 +6,73 @@
   <link rel="stylesheet" href="css/clawd.css">
 </head>
 <body>
-  <img id="pet" class="pet pet--idle" src="clawd_sprites/idle.svg" alt="Luc">
+  <div id="pet-stage" aria-label="Luc">
+    <iframe id="pet-a" class="pet-frame" sandbox="" title=""></iframe>
+    <iframe id="pet-b" class="pet-frame" sandbox="" title=""></iframe>
+  </div>
   <script>
-    window.LucPet = {
-      setExpression(name) {
-        const allowed = new Set(["idle", "happy", "angry", "sleepy"]);
-        const safe = allowed.has(name) ? name : "idle";
-        const pet = document.getElementById("pet");
-        pet.className = `pet pet--${safe}`;
-        pet.src = `clawd_sprites/${safe}.svg`;
+    (() => {
+      const allowed = new Set([
+        "idle", "happy", "angry", "sleepy", "thinking", "talking", "love", "smug", "shocked",
+        "confused", "shy", "proud", "sulky", "lonely_1", "lonely_2", "lonely_3", "waving",
+        "peeking", "morning", "night", "eating", "dancing", "dizzy", "clingy", "grabbed", "stuck",
+        "stuck_tap", "stuck_grab"
+      ]);
+      const slots = [document.getElementById("pet-a"), document.getElementById("pet-b")];
+      let activeIndex = -1;
+      let revision = 0;
+
+      async function setSprite(url, stateId) {
+        const state = allowed.has(stateId) ? stateId : "idle";
+        const currentRevision = ++revision;
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`Sprite request failed: ${response.status}`);
+        } catch (_) {
+          if (currentRevision !== revision) return;
+          if (state !== "idle") return setSprite("clawd_sprites/idle_1.svg", "idle");
+          return;
+        }
+        if (currentRevision !== revision) return;
+
+        const incomingIndex = activeIndex === 0 ? 1 : 0;
+        const incoming = slots[incomingIndex];
+        const outgoing = activeIndex < 0 ? null : slots[activeIndex];
+        incoming.onload = () => {
+          if (currentRevision !== revision) return;
+          incoming.className = `pet-frame pet--${state} pet--visible`;
+          if (outgoing) outgoing.className = "pet-frame pet--fading";
+          window.setTimeout(() => {
+            if (currentRevision === revision && outgoing) {
+              outgoing.src = "about:blank";
+              outgoing.className = "pet-frame";
+            }
+          }, 200);
+          activeIndex = incomingIndex;
+        };
+        incoming.onerror = () => {
+          if (currentRevision !== revision) return;
+          if (state !== "idle") setSprite("clawd_sprites/idle_1.svg", "idle");
+        };
+        incoming.className = "pet-frame";
+        incoming.src = url;
       }
-    };
+
+      window.LucPet = {
+        setExpression(name) {
+          setSprite(`clawd_sprites/${name}.svg`, name);
+        },
+        setSprite,
+        heart() {
+          const heart = document.createElement("span");
+          heart.className = "heart-particle";
+          heart.textContent = "♥";
+          document.getElementById("pet-stage").appendChild(heart);
+          window.setTimeout(() => heart.remove(), 900);
+        },
+      };
+      setSprite("clawd_sprites/idle_1.svg", "idle");
+    })();
   </script>
 </body>
 </html>

@@ -10,15 +10,14 @@ import org.junit.Test
 
 class OverlayWindowSpecTest {
     @Test
-    fun petWindowIsExactlyOneHundredTwentyDpAndTouchable() {
+    fun petWindowIsExactlyNinetyDpTouchableAndFocusable() {
         val pet = OverlayWindowSpec.pet()
 
-        assertEquals(120, pet.widthDp)
-        assertEquals(120, pet.heightDp)
+        assertEquals(90, pet.widthDp)
+        assertEquals(90, pet.heightDp)
         assertTrue(pet.touchable)
         assertEquals(
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             pet.flags,
         )
     }
@@ -27,8 +26,8 @@ class OverlayWindowSpecTest {
     fun bubbleWindowIsNeverTouchable() {
         val bubble = OverlayWindowSpec.bubble()
 
-        assertEquals(240, bubble.widthDp)
-        assertEquals(160, bubble.heightDp)
+        assertEquals(180, bubble.widthDp)
+        assertEquals(120, bubble.heightDp)
         assertFalse(bubble.touchable)
         assertEquals(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -49,7 +48,7 @@ class OverlayWindowSpecTest {
 
     @Test
     fun sizesConvertFromDpToExactPixelsForWindowLayout() {
-        assertEquals(OverlaySizePx(width = 150, height = 150), OverlayWindowSpec.pet().sizePx(1.25f))
-        assertEquals(OverlaySizePx(width = 300, height = 200), OverlayWindowSpec.bubble().sizePx(1.25f))
+        assertEquals(OverlaySizePx(width = 113, height = 113), OverlayWindowSpec.pet().sizePx(1.25f))
+        assertEquals(OverlaySizePx(width = 225, height = 150), OverlayWindowSpec.bubble().sizePx(1.25f))
     }
 }

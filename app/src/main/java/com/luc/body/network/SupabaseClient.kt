@@ -33,7 +33,10 @@ class SupabaseClient(
     fun fetchLatest(callback: (Result<RemoteState?>) -> Unit): Call {
         val url = config.baseUrl.toHttpUrl().newBuilder()
             .addPathSegments("rest/v1/clawd_state")
-            .addQueryParameter("select", "expression,bubble_text,bubble_style,updated_at")
+            .addQueryParameter(
+                "select",
+                "expression,bubble_text,bubble_style,valence,arousal,heat,updated_at",
+            )
             .addQueryParameter("order", "updated_at.desc")
             .addQueryParameter("limit", "1")
             .build()
@@ -49,7 +52,7 @@ class SupabaseClient(
                     val result = runCatching {
                         response.use {
                             check(it.isSuccessful) { "HTTP ${it.code}" }
-                            parseState(it.body.string())
+                            parseStateResponse(checkNotNull(it.body).string())
                         }
                     }
                     if (isCurrent(requestGeneration)) callback(result)
@@ -60,21 +63,31 @@ class SupabaseClient(
     }
 
     fun postTap(eventId: UUID, callback: (Result<Unit>) -> Unit): Call {
-        val body = JSONObject()
-            .put("id", eventId.toString())
-            .put("event_type", "tap")
-            .put("payload", JSONObject())
-            .toString()
+        @Suppress("UNUSED_VARIABLE")
+        val ignoredEventId = eventId
+        return postEvents(listOf(ClawdEvent("tap")), callback)
+    }
+
+    fun postEvents(events: List<ClawdEvent>, callback: (Result<Unit>) -> Unit): Call {
+        require(events.isNotEmpty()) { "At least one event is required" }
+        val body = JSONArray().apply {
+            events.forEach { event ->
+                put(
+                    JSONObject()
+                        .put("event_type", event.eventType)
+                        .put("payload", JSONObject(event.payload)),
+                )
+            }
+        }.toString()
         return synchronized(lifecycleLock) {
-            enqueueTapLocked(body, callback, generation, retry = false)
+            enqueueEventsLocked(body, callback, generation)
         }
     }
 
-    private fun enqueueTapLocked(
+    private fun enqueueEventsLocked(
         body: String,
         callback: (Result<Unit>) -> Unit,
         requestGeneration: Long,
-        retry: Boolean,
     ): Call {
         val call = httpClient.newCall(
             request("${config.baseUrl}/rest/v1/clawd_events")
@@ -85,36 +98,19 @@ class SupabaseClient(
         )
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (!retry && startRetryIfCurrent(body, callback, requestGeneration, call)) {
-                    return
-                } else {
-                    if (isCurrent(requestGeneration)) callback(Result.failure(e))
-                }
+                if (isCurrent(requestGeneration)) callback(Result.failure(e))
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val successful = response.use { it.isSuccessful }
                 if (successful) {
                     if (isCurrent(requestGeneration)) callback(Result.success(Unit))
-                } else if (!retry && startRetryIfCurrent(body, callback, requestGeneration, call)) {
-                    return
                 } else {
                     if (isCurrent(requestGeneration)) callback(Result.failure(IOException("HTTP response was unsuccessful")))
                 }
             }
         })
         return call
-    }
-
-    private fun startRetryIfCurrent(
-        body: String,
-        callback: (Result<Unit>) -> Unit,
-        requestGeneration: Long,
-        failedCall: Call,
-    ): Boolean = synchronized(lifecycleLock) {
-        if (generation != requestGeneration || failedCall.isCanceled()) return false
-        enqueueTapLocked(body, callback, requestGeneration, retry = true)
-        true
     }
 
     private fun isCurrent(requestGeneration: Long): Boolean = synchronized(lifecycleLock) {
@@ -127,22 +123,37 @@ class SupabaseClient(
         .header("Authorization", "Bearer ${config.publishableKey}")
         .header("Accept", "application/json")
 
-    private fun parseState(body: String): RemoteState? {
-        val rows = JSONArray(body)
-        if (rows.length() == 0) return null
-        val row = rows.getJSONObject(0)
-        return RemoteState(
-            expression = Expression.fromRemote(row.optNullableString("expression")),
-            bubbleText = row.optNullableString("bubble_text"),
-            bubbleStyle = BubbleStyle.fromRemote(row.optNullableString("bubble_style")),
-            updatedAt = row.getString("updated_at"),
-        )
-    }
-
-    private fun JSONObject.optNullableString(name: String): String? =
-        if (isNull(name)) null else getString(name)
-
     private companion object {
         val JSON_MEDIA_TYPE = "application/json".toMediaType()
     }
 }
+
+data class ClawdEvent(
+    val eventType: String,
+    val payload: Map<String, Any?> = emptyMap(),
+) {
+    init {
+        require(eventType.isNotBlank()) { "Event type must not be blank" }
+    }
+}
+
+internal fun parseStateResponse(body: String): RemoteState? {
+    val rows = JSONArray(body)
+    return if (rows.length() == 0) null else parseRemoteState(rows.getJSONObject(0))
+}
+
+internal fun parseRemoteState(row: JSONObject): RemoteState = RemoteState(
+    expression = Expression.fromRemote(row.optNullableString("expression")),
+    bubbleText = row.optNullableString("bubble_text"),
+    bubbleStyle = BubbleStyle.fromRemote(row.optNullableString("bubble_style")),
+    updatedAt = row.getString("updated_at"),
+    valence = row.optNullableNumber("valence")?.toDouble(),
+    arousal = row.optNullableNumber("arousal")?.toDouble(),
+    heat = row.optNullableNumber("heat")?.toInt(),
+)
+
+private fun JSONObject.optNullableString(name: String): String? =
+    if (!has(name) || isNull(name)) null else getString(name)
+
+private fun JSONObject.optNullableNumber(name: String): Number? =
+    if (!has(name) || isNull(name)) null else get(name) as? Number

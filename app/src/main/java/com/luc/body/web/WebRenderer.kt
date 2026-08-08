@@ -8,6 +8,8 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewAssetLoader
+import com.luc.body.sprite.ExternalSpritePathHandler
+import com.luc.body.sprite.SpriteCatalogLoader
 import com.luc.body.state.UiSink
 import com.luc.body.state.VisibleState
 
@@ -15,9 +17,14 @@ class WebRenderer(
     private val petWebView: WebView,
     private val bubbleWebView: WebView,
 ) : UiSink {
-    private val assetLoader = WebViewAssetLoader.Builder()
-        .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(petWebView.context))
-        .build()
+    private val externalSpriteDirectory = SpriteCatalogLoader.externalDirectory(petWebView.context)
+    private val spriteCatalog = SpriteCatalogLoader.load(petWebView.context)
+    private val assetLoader = WebViewAssetLoader.Builder().apply {
+        addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(petWebView.context))
+        externalSpriteDirectory?.let { directory ->
+            addPathHandler(SpriteCatalogLoader.EXTERNAL_PATH, ExternalSpritePathHandler(directory))
+        }
+    }.build()
     private val renderGate = WebRenderGate(::renderReadyState)
 
     init {
@@ -31,9 +38,14 @@ class WebRenderer(
         renderGate.render(state)
     }
 
+    fun showHeartParticles() {
+        petWebView.evaluateJavascript("window.LucPet.heart()", null)
+    }
+
     private fun renderReadyState(state: VisibleState) {
+        val sprite = spriteCatalog.choose(state.expression.name)
         petWebView.evaluateJavascript(
-            JavascriptCommandBuilder.setExpression(state.expression.name.lowercase()),
+            JavascriptCommandBuilder.setSprite(sprite.url, state.expression.name.lowercase()),
             null,
         )
         val bubbleCommand = state.bubbleText?.let {
@@ -91,7 +103,7 @@ class WebRenderer(
         private fun isBundledAsset(uri: Uri): Boolean =
             uri.scheme == "https" &&
                 uri.host == WebViewAssetLoader.DEFAULT_DOMAIN &&
-                uri.path?.startsWith("/assets/") == true
+                (uri.path?.startsWith("/assets/") == true || uri.path?.startsWith(SpriteCatalogLoader.EXTERNAL_PATH) == true)
     }
 
     private companion object {
