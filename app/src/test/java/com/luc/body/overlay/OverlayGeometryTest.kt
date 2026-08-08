@@ -64,9 +64,14 @@ class OverlayGeometryTest {
     fun `snap includes exact fifteen dp outer-edge gap on all four edges`() {
         val bounds = SafeBoundsPx(50, 100, 1_050, 2_000)
 
-        assertEquals(SnapEdge.LEFT, geometry.snapPet(80, 500, bounds).edge)
+        val left = geometry.snapPet(80, 500, bounds)
+        val right = geometry.snapPet(840, 500, bounds)
+
+        assertEquals(SnapEdge.LEFT, left.edge)
+        assertEquals(-10, left.placement.petX)
         assertEquals(SnapEdge.TOP, geometry.snapPet(500, 130, bounds).edge)
-        assertEquals(SnapEdge.RIGHT, geometry.snapPet(840, 500, bounds).edge)
+        assertEquals(SnapEdge.RIGHT, right.edge)
+        assertEquals(930, right.placement.petX)
         assertEquals(SnapEdge.BOTTOM, geometry.snapPet(500, 1_790, bounds).edge)
     }
 

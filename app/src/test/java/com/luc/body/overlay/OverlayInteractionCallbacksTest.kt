@@ -31,6 +31,7 @@ class OverlayInteractionCallbacksTest {
             onDragStarted = { events += "drag:$it" },
             onDragEnded = { events += "stuck:$it" },
             onFling = { fling, expression -> events += "fling:${fling.direction}:$expression" },
+            onFlingSettled = { events += "fling-stuck:$it" },
         )
 
         callbacks.dispatchTap(fromStuck = false)
@@ -41,12 +42,14 @@ class OverlayInteractionCallbacksTest {
         callbacks.onDragEnded(false)
         val fling = FlingGesture(FlingDirection.LEFT, velocityX = -1_000f, velocityY = 0f)
         callbacks.onFling(fling, fling.direction.expression)
+        callbacks.onFlingSettled(true)
 
         assertEquals(
             listOf(
                 "tap", "stuck-tap", "double", "hearts",
                 "poke", "pet-head", "hide", "settings",
                 "drag:true", "stuck:false", "fling:LEFT:DIZZY",
+                "fling-stuck:true",
             ),
             events,
         )

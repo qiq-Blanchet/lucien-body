@@ -20,6 +20,7 @@ data class OverlayInteractionCallbacks(
     val onDragStarted: (fromStuck: Boolean) -> Unit,
     val onDragEnded: (isStuck: Boolean) -> Unit,
     val onFling: (FlingGesture, Expression) -> Unit,
+    val onFlingSettled: (isStuck: Boolean) -> Unit,
 ) {
     fun dispatchTap(fromStuck: Boolean) {
         if (fromStuck) onStuckTap() else onTap()
