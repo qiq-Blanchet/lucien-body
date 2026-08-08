@@ -16,6 +16,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -154,6 +155,75 @@ class SupabaseRealtimeClientTest {
     }
 
     @Test
+    fun missingPostgresSubscriptionStartsHttpFallback() {
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(
+                object : WebSocketListener() {
+                    override fun onMessage(webSocket: WebSocket, text: String) {
+                        val message = JSONObject(text)
+                        if (message.optString("event") == "phx_join") {
+                            webSocket.send(joinReply(message.getString("ref"), includeSubscription = false))
+                        }
+                    }
+                },
+            ),
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """[{"expression":"happy","bubble_text":null,"bubble_style":"normal","updated_at":"2026-08-04T00:00:00Z"}]""",
+            ),
+        )
+        val fallbackState = CountDownLatch(1)
+        realtime = newRealtime { fallbackState.countDown() }
+
+        realtime.start()
+
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        val fallback = requireNotNull(server.takeRequest(2, TimeUnit.SECONDS))
+        assertEquals("/rest/v1/clawd_state", fallback.requestUrl?.encodedPath)
+        assertTrue(fallbackState.await(2, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun postgresSubscriptionErrorStartsHttpFallback() {
+        val joined = CountDownLatch(1)
+        server.enqueue(
+            MockResponse().withWebSocketUpgrade(
+                object : WebSocketListener() {
+                    override fun onMessage(webSocket: WebSocket, text: String) {
+                        val message = JSONObject(text)
+                        if (message.optString("event") == "phx_join") {
+                            webSocket.send(joinReply(message.getString("ref")))
+                            joined.countDown()
+                            webSocket.send(
+                                JSONObject()
+                                    .put("topic", "realtime:clawd_state")
+                                    .put("event", "system")
+                                    .put(
+                                        "payload",
+                                        JSONObject()
+                                            .put("extension", "postgres_changes")
+                                            .put("status", "error"),
+                                    )
+                                    .toString(),
+                            )
+                        }
+                    }
+                },
+            ),
+        )
+        server.enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+        realtime = newRealtime { }
+
+        realtime.start()
+
+        assertTrue(joined.await(2, TimeUnit.SECONDS))
+        requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        val fallback = requireNotNull(server.takeRequest(2, TimeUnit.SECONDS))
+        assertEquals("/rest/v1/clawd_state", fallback.requestUrl?.encodedPath)
+    }
+
+    @Test
     fun reconnectBackoffUsesTheSpecifiedSequenceAndCapsAtThirtySeconds() {
         assertEquals(
             listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L, 30_000L, 30_000L),
@@ -266,10 +336,31 @@ class SupabaseRealtimeClientTest {
         return SupabaseRealtimeClient(config, httpClient, polling, scheduler, DIRECT_EXECUTOR, onState)
     }
 
-    private fun joinReply(ref: String): String = JSONObject()
+    private fun joinReply(ref: String, includeSubscription: Boolean = true): String = JSONObject()
         .put("topic", "realtime:clawd_state")
         .put("event", "phx_reply")
-        .put("payload", JSONObject().put("status", "ok").put("response", JSONObject()))
+        .put(
+            "payload",
+            JSONObject()
+                .put("status", "ok")
+                .put(
+                    "response",
+                    JSONObject().put(
+                        "postgres_changes",
+                        if (includeSubscription) {
+                            JSONArray().put(
+                                JSONObject()
+                                    .put("id", 1)
+                                    .put("event", "UPDATE")
+                                    .put("schema", "public")
+                                    .put("table", "clawd_state"),
+                            )
+                        } else {
+                            JSONArray()
+                        },
+                    ),
+                ),
+        )
         .put("join_ref", ref)
         .put("ref", ref)
         .toString()

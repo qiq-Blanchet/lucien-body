@@ -264,6 +264,7 @@ class OverlayService : Service() {
         supabaseClient = client
         eventBatcher = EventBatcher(client, scheduler)
         realtimeClient = realtime
+        poller.fetchOnce()
         realtime.start()
     }
 
