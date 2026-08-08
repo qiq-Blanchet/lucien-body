@@ -7,7 +7,14 @@ data class EdgeInsetsPx(
     val top: Int,
     val right: Int,
     val bottom: Int,
-)
+) {
+    fun maxPerEdge(other: EdgeInsetsPx): EdgeInsetsPx = EdgeInsetsPx(
+        left = max(left, other.left),
+        top = max(top, other.top),
+        right = max(right, other.right),
+        bottom = max(bottom, other.bottom),
+    )
+}
 
 object LegacySafeBounds {
     fun fromRealDisplay(

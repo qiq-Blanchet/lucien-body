@@ -7,8 +7,8 @@
 </head>
 <body>
   <div id="pet-stage" aria-label="Luc">
-    <iframe id="pet-a" class="pet-frame" sandbox="" title=""></iframe>
-    <iframe id="pet-b" class="pet-frame" sandbox="" title=""></iframe>
+    <img id="pet-a" class="pet-frame" alt="">
+    <img id="pet-b" class="pet-frame" alt="">
   </div>
   <script>
     (() => {
@@ -44,7 +44,7 @@
           if (outgoing) outgoing.className = "pet-frame pet--fading";
           window.setTimeout(() => {
             if (currentRevision === revision && outgoing) {
-              outgoing.src = "about:blank";
+              outgoing.removeAttribute("src");
               outgoing.className = "pet-frame";
             }
           }, 200);

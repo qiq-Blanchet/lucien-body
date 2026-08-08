@@ -32,7 +32,8 @@ data class OverlayWindowSpec(
             widthDp = sizeDp,
             heightDp = sizeDp,
             touchable = true,
-            flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             pixelFormat = PixelFormat.TRANSLUCENT,
             gravity = Gravity.TOP or Gravity.START,

@@ -10,14 +10,15 @@ import org.junit.Test
 
 class OverlayWindowSpecTest {
     @Test
-    fun petWindowIsExactlyNinetyDpTouchableAndFocusable() {
+    fun petWindowIsExactlyNinetyDpTouchableWithoutTakingWindowFocus() {
         val pet = OverlayWindowSpec.pet()
 
         assertEquals(90, pet.widthDp)
         assertEquals(90, pet.heightDp)
         assertTrue(pet.touchable)
         assertEquals(
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             pet.flags,
         )
     }
