@@ -280,13 +280,14 @@ class StateCoordinatorTest {
     }
 
     @Test
-    fun remoteBubbleAlsoRequestsTalkingButDoesNotOverrideAHigherPriorityExpression() {
+    fun remoteBubblePreservesTheSuppliedExpression() {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
         val coordinator = coordinator(sink, scheduler)
 
         coordinator.onRemoteState(remote(Expression.HAPPY, "hello", revision = REVISION_1))
-        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
+        assertEquals("hello", sink.states.last().bubbleText)
 
         coordinator.onRemoteState(remote(Expression.LOVE, "love", revision = REVISION_2))
         assertEquals(Expression.LOVE, sink.states.last().expression)
@@ -301,10 +302,10 @@ class StateCoordinatorTest {
         coordinator.setContextState(ContextSource.TIME_SLOT, Expression.SLEEPY)
 
         coordinator.onRemoteState(remote(Expression.HAPPY, "hello", revision = REVISION_1))
-        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
 
         scheduler.advanceBy(3_999)
-        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
         scheduler.advanceBy(1)
         assertEquals(Expression.SLEEPY, sink.states.last().expression)
         assertNull(sink.states.last().bubbleText)

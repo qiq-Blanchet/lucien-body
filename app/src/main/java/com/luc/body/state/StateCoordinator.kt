@@ -313,6 +313,7 @@ class StateCoordinator(
                 style = state.bubbleStyle,
                 revision = state.updatedAt,
                 durationMs = null,
+                requestTalking = false,
             )
         }
         val generation = ++remoteExpiryGeneration
@@ -331,6 +332,7 @@ class StateCoordinator(
         style: BubbleStyle,
         revision: String,
         durationMs: Long?,
+        requestTalking: Boolean = true,
     ) {
         clearActiveBubble()
         val previous = selectedCandidate()
@@ -338,7 +340,9 @@ class StateCoordinator(
         val bubble = ActiveBubble(text, style, revision, generation)
         activeBubble = bubble
         bubbleTalkingCandidate = if (
-            dragCandidate == null && Expression.TALKING.priority >= previous.expression.priority
+            requestTalking &&
+            dragCandidate == null &&
+            Expression.TALKING.priority >= previous.expression.priority
         ) {
             Candidate(Expression.TALKING, nextSequence(), revision)
         } else {
