@@ -335,6 +335,131 @@ class StateCoordinatorTest {
     }
 
     @Test
+    fun changedRemoteEmotionMetricsDisplayForTheSameDurationAsTheRemoteState() {
+        val sink = RecordingSink()
+        val scheduler = FakeScheduler()
+        val coordinator = coordinator(sink, scheduler)
+        val metrics = EmotionMetrics(valence = 0.78, arousal = 0.42, heat = 7)
+        coordinator.onRemoteState(remote(revision = REVISION_0))
+        scheduler.advanceBy(4_000)
+
+        coordinator.onRemoteState(
+            remote(
+                Expression.HAPPY,
+                text = "hello",
+                revision = REVISION_1,
+                valence = metrics.valence,
+                arousal = metrics.arousal,
+                heat = metrics.heat,
+            ),
+        )
+
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
+        assertEquals("hello", sink.states.last().bubbleText)
+        assertEquals(metrics, sink.states.last().emotionMetrics)
+        scheduler.advanceBy(3_999)
+        assertEquals(metrics, sink.states.last().emotionMetrics)
+        scheduler.advanceBy(1)
+        assertEquals(Expression.IDLE, sink.states.last().expression)
+        assertNull(sink.states.last().emotionMetrics)
+    }
+
+    @Test
+    fun initialRemoteMetricsSeedTheLongPressCacheWithoutPretendingToBeANewPush() {
+        val sink = RecordingSink()
+        val coordinator = coordinator(sink)
+        val metrics = EmotionMetrics(valence = 0.78, arousal = 0.42, heat = 7)
+
+        coordinator.onRemoteState(
+            remote(
+                revision = REVISION_0,
+                valence = metrics.valence,
+                arousal = metrics.arousal,
+                heat = metrics.heat,
+            ),
+        )
+
+        assertNull(sink.states.last().emotionMetrics)
+        coordinator.showLatestEmotionMetrics()
+        assertEquals(metrics, sink.states.last().emotionMetrics)
+    }
+
+    @Test
+    fun remoteEmotionCacheMergesPartialValuesAndLongPressReopensItWithoutChangingOtherUi() {
+        val sink = RecordingSink()
+        val scheduler = FakeScheduler()
+        val coordinator = coordinator(sink, scheduler)
+        coordinator.setContextState(Expression.SLEEPY)
+        coordinator.onRemoteState(remote(revision = REVISION_0))
+        scheduler.advanceBy(4_000)
+        coordinator.onRemoteState(remote(revision = REVISION_1, valence = 0.78))
+        scheduler.advanceBy(4_000)
+        coordinator.onRemoteState(remote(revision = REVISION_2, arousal = 0.42, heat = 7))
+        val merged = EmotionMetrics(valence = 0.78, arousal = 0.42, heat = 7)
+        assertEquals(merged, sink.states.last().emotionMetrics)
+        scheduler.advanceBy(4_000)
+
+        assertEquals(Expression.SLEEPY, sink.states.last().expression)
+        assertNull(sink.states.last().bubbleText)
+        assertNull(sink.states.last().emotionMetrics)
+
+        coordinator.showLatestEmotionMetrics()
+
+        assertEquals(Expression.SLEEPY, sink.states.last().expression)
+        assertNull(sink.states.last().bubbleText)
+        assertEquals(merged, sink.states.last().emotionMetrics)
+        scheduler.advanceBy(3_999)
+        assertEquals(merged, sink.states.last().emotionMetrics)
+        scheduler.advanceBy(1)
+        assertNull(sink.states.last().emotionMetrics)
+    }
+
+    @Test
+    fun missingUnchangedAndStaleRemoteMetricsDoNotAutoDisplayOrOverwriteTheCache() {
+        val sink = RecordingSink()
+        val scheduler = FakeScheduler()
+        val coordinator = coordinator(sink, scheduler)
+        val metrics = EmotionMetrics(valence = 0.78, arousal = 0.42, heat = 7)
+        coordinator.onRemoteState(remote(revision = REVISION_0))
+        scheduler.advanceBy(4_000)
+        coordinator.onRemoteState(
+            remote(
+                revision = REVISION_1,
+                valence = metrics.valence,
+                arousal = metrics.arousal,
+                heat = metrics.heat,
+            ),
+        )
+        scheduler.advanceBy(4_000)
+
+        coordinator.onRemoteState(remote(Expression.HAPPY, revision = REVISION_2))
+        assertNull(sink.states.last().emotionMetrics)
+        coordinator.onRemoteState(
+            remote(
+                Expression.LOVE,
+                revision = "2026-08-04T12:00:01.500Z",
+                valence = 0.1,
+                arousal = 0.1,
+                heat = 1,
+            ),
+        )
+        assertNull(sink.states.last().emotionMetrics)
+        scheduler.advanceBy(4_000)
+
+        coordinator.onRemoteState(
+            remote(
+                revision = "2026-08-04T12:00:03Z",
+                valence = metrics.valence,
+                arousal = metrics.arousal,
+                heat = metrics.heat,
+            ),
+        )
+        assertNull(sink.states.last().emotionMetrics)
+        coordinator.showLatestEmotionMetrics()
+        assertEquals(metrics, sink.states.last().emotionMetrics)
+    }
+
+    @Test
     fun canceledRemoteExpiryCannotClearANewerRemoteState() {
         val sink = RecordingSink()
         val scheduler = UnreliableScheduler()
@@ -451,7 +576,10 @@ class StateCoordinatorTest {
         text: String? = null,
         style: BubbleStyle = BubbleStyle.NORMAL,
         revision: String,
-    ) = RemoteState(expression, text, style, revision)
+        valence: Double? = null,
+        arousal: Double? = null,
+        heat: Int? = null,
+    ) = RemoteState(expression, text, style, revision, valence, arousal, heat)
 
     private fun invokeOnAnotherThread(action: () -> Unit): Throwable? {
         var failure: Throwable? = null
@@ -533,6 +661,7 @@ class StateCoordinatorTest {
     }
 
     private companion object {
+        const val REVISION_0 = "2026-08-04T12:00:00Z"
         const val REVISION_1 = "2026-08-04T12:00:01Z"
         const val REVISION_2 = "2026-08-04T12:00:02Z"
     }

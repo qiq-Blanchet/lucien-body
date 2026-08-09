@@ -50,5 +50,17 @@ data class OverlayWindowSpec(
             pixelFormat = PixelFormat.TRANSLUCENT,
             gravity = Gravity.TOP or Gravity.START,
         )
+
+        fun metrics(): OverlayWindowSpec = OverlayWindowSpec(
+            widthDp = 140,
+            heightDp = 132,
+            touchable = false,
+            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            pixelFormat = PixelFormat.TRANSLUCENT,
+            gravity = Gravity.TOP or Gravity.START,
+        )
     }
 }

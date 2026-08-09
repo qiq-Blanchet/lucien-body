@@ -19,6 +19,14 @@ class OverlayInteractionCallbacksTest {
     }
 
     @Test
+    fun `long press keeps the existing menu and also reopens the latest emotion metrics`() {
+        val source = File("src/main/java/com/luc/body/OverlayService.kt").readText()
+
+        assertTrue(source.contains("controller.showMiniMenu(actions)"))
+        assertTrue(source.contains("coordinator.showLatestEmotionMetrics()"))
+    }
+
+    @Test
     fun `callback bundle exposes heart menu drag snap and fling wiring points`() {
         val events = mutableListOf<String>()
         val menu = MiniMenuActions(
