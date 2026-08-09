@@ -6,6 +6,50 @@ import org.junit.Test
 
 class AppSenseManagerTest {
     @Test
+    fun peekingExpiresAfterOneAnimationCycleAndFallsBackToIdle() {
+        val clock = MutableClock()
+        val scheduler = BehaviorScheduler(clock)
+        val sink = BehaviorSink()
+        val manager = AppSenseManager(
+            coordinator(sink, scheduler),
+            scheduler,
+            ForegroundPackageSource { "music.app" },
+            AppSceneClassifier(AppPackageCategories(setOf("launcher"))),
+            AppEventSink { _, _ -> },
+        )
+
+        manager.start()
+        scheduler.advanceBy(AppSenseManager.POLL_INTERVAL_MS)
+        assertEquals(Expression.PEEKING, sink.states.last().expression)
+
+        scheduler.advanceBy(AppSenseManager.PEEKING_DURATION_MS - 1L)
+        assertEquals(Expression.PEEKING, sink.states.last().expression)
+        scheduler.advanceBy(1L)
+        assertEquals(Expression.IDLE, sink.states.last().expression)
+    }
+
+    @Test
+    fun peekingKeepsTheExistingStuckPriority() {
+        val clock = MutableClock()
+        val scheduler = BehaviorScheduler(clock)
+        val sink = BehaviorSink()
+        val coordinator = coordinator(sink, scheduler)
+        coordinator.setStuck(true)
+        val manager = AppSenseManager(
+            coordinator,
+            scheduler,
+            ForegroundPackageSource { "music.app" },
+            AppSceneClassifier(AppPackageCategories(setOf("launcher"))),
+            AppEventSink { _, _ -> },
+        )
+
+        manager.start()
+        scheduler.advanceBy(AppSenseManager.POLL_INTERVAL_MS)
+
+        assertEquals(Expression.STUCK, sink.states.last().expression)
+    }
+
+    @Test
     fun onlyDesktopOtherAndReturnToDesktopMappingsAreApplied() {
         val clock = MutableClock()
         val scheduler = BehaviorScheduler(clock)

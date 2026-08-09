@@ -240,7 +240,7 @@
 | 场景 | 检测方式 | 表情 |
 |---|---|---|
 | 在桌面 | launcher 包名 | idle |
-| 在用其他 app | 非 launcher | peeking |
+| 切换到其他 app | 前台包名变为非 launcher | peeking 播放10秒后回到已有状态 |
 | 回到桌面 | 从其他 app 切回 | waving |
 
 - 感知结果上报到 Supabase clawd_events（event_type: "app_foreground", payload: {"package": "..."}）
