@@ -29,11 +29,20 @@ class WebRenderer(
     }.build()
     private val playbackGate = SpritePlaybackGate(spriteCatalog)
     private var renderedSprite: Pair<String, String>? = null
+    private val bubblePlacementGate = BubblePlacementGate { belowPet ->
+        bubbleWebView.evaluateJavascript(
+            JavascriptCommandBuilder.setBubbleBelowPet(belowPet),
+            null,
+        )
+    }
     private val renderGate = WebRenderGate(::renderReadyState)
 
     init {
         configure(petWebView, CLAWD_URL, renderGate::onPetPageFinished)
-        configure(bubbleWebView, BUBBLE_URL, renderGate::onBubblePageFinished)
+        configure(bubbleWebView, BUBBLE_URL) {
+            bubblePlacementGate.onPageFinished()
+            renderGate.onBubblePageFinished()
+        }
         petWebView.loadUrl(CLAWD_URL)
         bubbleWebView.loadUrl(BUBBLE_URL)
     }
@@ -44,6 +53,10 @@ class WebRenderer(
 
     fun showHeartParticles() {
         petWebView.evaluateJavascript("window.LucPet.heart()", null)
+    }
+
+    fun setBubbleBelowPet(belowPet: Boolean) {
+        bubblePlacementGate.setBelowPet(belowPet)
     }
 
     private fun renderReadyState(state: VisibleState) {

@@ -60,8 +60,8 @@ android {
         applicationId = "com.luc.body"
         minSdk = 26
         targetSdk = 34
-        versionCode = 9
-        versionName = "0.1.8"
+        versionCode = 10
+        versionName = "0.1.9"
         buildConfigField("String", "SUPABASE_URL", javaStringLiteral(configValue("SUPABASE_URL")))
         buildConfigField(
             "String",

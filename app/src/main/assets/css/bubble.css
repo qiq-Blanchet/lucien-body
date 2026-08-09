@@ -10,6 +10,14 @@ body {
   min-height: 100vh;
 }
 
+body.bubble-below {
+  align-items: flex-start;
+}
+
+body.bubble-below .bubble {
+  margin-top: 4px;
+}
+
 .bubble {
   display: inline-block;
   position: relative;

@@ -204,6 +204,7 @@ class OverlayController(
         val pet = petView ?: return
         val currentBubbleParams = bubbleParams ?: return
         val currentPetParams = petParams ?: return
+        renderer?.setBubbleBelowPet(placement.bubbleBelowPet)
         currentBubbleParams.x = placement.bubbleX
         currentBubbleParams.y = placement.bubbleY
         currentPetParams.x = placement.petX

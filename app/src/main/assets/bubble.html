@@ -9,6 +9,9 @@
   <div id="bubble" class="bubble" role="status" aria-live="polite"></div>
   <script>
     window.LucBubble = {
+      setPlacement(belowPet) {
+        document.body.classList.toggle("bubble-below", Boolean(belowPet));
+      },
       show(text, style, revision) {
         const allowed = new Set(["normal", "whisper", "shout", "love", "sleepy"]);
         const bubble = document.getElementById("bubble");
