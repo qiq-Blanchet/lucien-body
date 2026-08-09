@@ -52,8 +52,8 @@ data class OverlayWindowSpec(
         )
 
         fun metrics(): OverlayWindowSpec = OverlayWindowSpec(
-            widthDp = 140,
-            heightDp = 132,
+            widthDp = 132,
+            heightDp = 72,
             touchable = false,
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
