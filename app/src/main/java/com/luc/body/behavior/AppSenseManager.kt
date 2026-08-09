@@ -44,6 +44,8 @@ class AppSenseManager(
     private var closed = false
     private var generation = 0L
     private var task: Cancelable? = null
+    private var peekingGeneration = 0L
+    private var peekingTask: Cancelable? = null
     private var previousPackage: String? = null
     private var previousScene: AppScene? = null
 
@@ -56,13 +58,21 @@ class AppSenseManager(
         if (closed || this.enabled == enabled) return
         this.enabled = enabled
         cancelScheduled()
-        if (enabled) scheduleNext()
+        if (enabled) {
+            scheduleNext()
+        } else {
+            cancelPeeking()
+            previousPackage = null
+            previousScene = null
+            coordinator.setContextState(ContextSource.APP, null)
+        }
     }
 
     override fun close() {
         if (closed) return
         closed = true
         cancelScheduled()
+        cancelPeeking()
     }
 
     private fun scheduleNext() {
@@ -88,12 +98,13 @@ class AppSenseManager(
         eventSink.report(APP_FOREGROUND_EVENT, mapOf(PACKAGE_PAYLOAD_KEY to packageName))
         when (scene) {
             AppScene.DESKTOP -> {
+                cancelPeeking()
                 coordinator.setContextState(ContextSource.APP, Expression.IDLE)
                 if (previousScene != null && previousScene != AppScene.DESKTOP) {
                     coordinator.onTransientState(Expression.WAVING)
                 }
             }
-            AppScene.OTHER -> coordinator.setContextState(ContextSource.APP, Expression.PEEKING)
+            AppScene.OTHER -> showPeeking()
         }
         previousPackage = packageName
         previousScene = scene
@@ -105,8 +116,31 @@ class AppSenseManager(
         task = null
     }
 
+    private fun showPeeking() {
+        cancelPeeking()
+        coordinator.setContextState(ContextSource.APP, Expression.PEEKING)
+        val callbackGeneration = ++peekingGeneration
+        val scheduled = scheduler.schedule(PEEKING_DURATION_MS) {
+            if (closed || !enabled || callbackGeneration != peekingGeneration) return@schedule
+            peekingTask = null
+            coordinator.setContextState(ContextSource.APP, null)
+        }
+        if (closed || !enabled || callbackGeneration != peekingGeneration) {
+            scheduled.cancel()
+        } else {
+            peekingTask = scheduled
+        }
+    }
+
+    private fun cancelPeeking() {
+        peekingGeneration += 1
+        peekingTask?.cancel()
+        peekingTask = null
+    }
+
     companion object {
         const val POLL_INTERVAL_MS = 5_000L
+        const val PEEKING_DURATION_MS = 10_000L
         const val APP_FOREGROUND_EVENT = "app_foreground"
         const val PACKAGE_PAYLOAD_KEY = "package"
     }
