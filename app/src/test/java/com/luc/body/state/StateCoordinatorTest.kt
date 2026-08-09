@@ -106,11 +106,15 @@ class StateCoordinatorTest {
             coordinator.onRemoteState(remote(Expression.IDLE, revision = REVISION_1))
 
             react(coordinator)
-            assertEquals(Expression.TALKING, sink.states.last().expression)
+            val expectedReaction = when (index) {
+                0, 1 -> Expression.HAPPY
+                else -> Expression.STUCK_TAP
+            }
+            assertEquals(expectedReaction, sink.states.last().expression)
             assertTrue(sink.states.last().bubbleText?.isNotBlank() == true)
             coordinator.onRemoteState(remote(Expression.LOVE, revision = REVISION_2))
             scheduler.advanceBy(1_199)
-            assertEquals("reaction $index ended early", Expression.TALKING, sink.states.last().expression)
+            assertEquals("reaction $index ended early", expectedReaction, sink.states.last().expression)
 
             scheduler.advanceBy(1)
             val expectedAfterLock = if (index == 2) Expression.STUCK else Expression.LOVE
@@ -124,7 +128,7 @@ class StateCoordinatorTest {
     }
 
     @Test
-    fun localBubbleUsesTalkingArbitrationButNeverOverridesLove() {
+    fun localBubblePreservesTheReactionExpression() {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
         val coordinator = coordinator(sink, scheduler)
@@ -162,7 +166,7 @@ class StateCoordinatorTest {
         coordinator.onRemoteState(remote(Expression.LOVE, revision = REVISION_1))
         coordinator.setContextState(ContextSource.TIME_SLOT, Expression.SLEEPY)
 
-        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
         scheduler.advanceBy(1_200)
         assertEquals(Expression.LOVE, sink.states.last().expression)
     }
@@ -261,19 +265,19 @@ class StateCoordinatorTest {
     }
 
     @Test
-    fun bubbleRequestsTalkingAndReturnsToThePreviousStateWhenItHides() {
+    fun bubblePreservesThePreviousStateWhenItHides() {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
         val coordinator = coordinator(sink, scheduler)
         coordinator.requestState(Expression.HAPPY)
 
         coordinator.showBubble("hello", BubbleStyle.SLEEPY)
-        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
         assertEquals("hello", sink.states.last().bubbleText)
         assertEquals(BubbleStyle.SLEEPY, sink.states.last().bubbleStyle)
 
         scheduler.advanceBy(3_999)
-        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
         scheduler.advanceBy(1)
         assertEquals(Expression.HAPPY, sink.states.last().expression)
         assertNull(sink.states.last().bubbleText)
@@ -292,6 +296,20 @@ class StateCoordinatorTest {
         coordinator.onRemoteState(remote(Expression.LOVE, "love", revision = REVISION_2))
         assertEquals(Expression.LOVE, sink.states.last().expression)
         assertEquals("love", sink.states.last().bubbleText)
+    }
+
+    @Test
+    fun explicitRemoteTalkingAndTextCannotBeOverwrittenByALocalBubbleOrTap() {
+        val sink = RecordingSink()
+        val coordinator = coordinator(sink)
+        coordinator.onRemoteState(remote(Expression.TALKING, "remote", revision = REVISION_1))
+
+        coordinator.showBubble("local")
+        coordinator.onLocalTap()
+
+        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals("remote", sink.states.last().bubbleText)
+        assertEquals(REVISION_1, sink.states.last().revision)
     }
 
     @Test
@@ -367,7 +385,7 @@ class StateCoordinatorTest {
         coordinator.showBubble("x".repeat(10))
 
         scheduler.advanceBy(2_999)
-        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals(Expression.IDLE, sink.states.last().expression)
         scheduler.advanceBy(1)
         assertNull(sink.states.last().bubbleText)
 
@@ -403,7 +421,7 @@ class StateCoordinatorTest {
         coordinator.onLocalTap()
         coordinator.onDoubleTap()
         scheduler.runEvenIfCanceled(0)
-        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
 
         coordinator.showBubble("visible")
         coordinator.close()

@@ -11,9 +11,9 @@ data class MiniMenuActions(
 )
 
 data class OverlayInteractionCallbacks(
-    val onTap: () -> Unit,
-    val onStuckTap: () -> Unit,
-    val onDoubleTap: () -> Unit,
+    val onTap: (eventTimeMs: Long) -> Unit,
+    val onStuckTap: (eventTimeMs: Long) -> Unit,
+    val onDoubleTap: (firstEventTimeMs: Long, secondEventTimeMs: Long) -> Unit,
     val onHeartParticles: () -> Unit,
     val onLongPressMenu: (MiniMenuActions) -> Unit,
     val menuActions: MiniMenuActions,
@@ -22,12 +22,12 @@ data class OverlayInteractionCallbacks(
     val onFling: (FlingGesture, Expression) -> Unit,
     val onFlingSettled: (isStuck: Boolean) -> Unit,
 ) {
-    fun dispatchTap(fromStuck: Boolean) {
-        if (fromStuck) onStuckTap() else onTap()
+    fun dispatchTap(fromStuck: Boolean, eventTimeMs: Long) {
+        if (fromStuck) onStuckTap(eventTimeMs) else onTap(eventTimeMs)
     }
 
-    fun dispatchDoubleTap() {
-        onDoubleTap()
+    fun dispatchDoubleTap(firstEventTimeMs: Long, secondEventTimeMs: Long) {
+        onDoubleTap(firstEventTimeMs, secondEventTimeMs)
         onHeartParticles()
     }
 

@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
@@ -129,8 +130,8 @@ class OverlayService : Service() {
         lateinit var coordinator: StateCoordinator
         lateinit var controller: OverlayController
         val interactions = OverlayInteractionCallbacks(
-            onTap = { handleTap(fromStuck = false) },
-            onStuckTap = { handleTap(fromStuck = true) },
+            onTap = { eventTimeMs -> handleTap(fromStuck = false, eventTimeMs) },
+            onStuckTap = { eventTimeMs -> handleTap(fromStuck = true, eventTimeMs) },
             onDoubleTap = ::handleDoubleTap,
             onHeartParticles = { controller.showHeartParticles() },
             onLongPressMenu = { actions -> controller.showMiniMenu(actions) },
@@ -201,8 +202,8 @@ class OverlayService : Service() {
             scheduler = scheduler,
             enabled = prefs.lonelinessEnabled,
         )
-        val timeSlot = TimeSlotManager(coordinator)
-        val tapFrequency = TapFrequencyTracker(coordinator)
+        val timeSlot = TimeSlotManager(coordinator, bubblesEnabled = prefs.selfTalkEnabled)
+        val tapFrequency = TapFrequencyTracker(coordinator, SystemClock::uptimeMillis)
         selfTalkManager = selfTalk
         lonelinessTracker = loneliness
         timeSlotManager = timeSlot
@@ -268,18 +269,22 @@ class OverlayService : Service() {
         realtime.start()
     }
 
-    private fun handleTap(fromStuck: Boolean) {
+    private fun handleTap(fromStuck: Boolean, eventTimeMs: Long? = null) {
         val coordinator = stateCoordinator ?: return
         recordInteraction()
         if (fromStuck) coordinator.onStuckTap("在呢。") else coordinator.onLocalTap()
-        tapFrequencyTracker?.onTap()
+        tapFrequencyTracker?.let { tracker ->
+            if (eventTimeMs == null) tracker.onTap() else tracker.onTap(eventTimeMs)
+        }
         enqueueEvent(if (fromStuck) "stuck_tap" else "tap")
     }
 
-    private fun handleDoubleTap() {
+    private fun handleDoubleTap(firstEventTimeMs: Long, secondEventTimeMs: Long) {
         val coordinator = stateCoordinator ?: return
         recordInteraction()
         coordinator.onDoubleTap(HAPPY_MESSAGES.random(random))
+        tapFrequencyTracker?.onTap(firstEventTimeMs)
+        tapFrequencyTracker?.onTap(secondEventTimeMs)
         enqueueEvent("double_tap")
     }
 

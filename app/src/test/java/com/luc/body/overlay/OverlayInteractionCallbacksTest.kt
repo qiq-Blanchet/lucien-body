@@ -28,9 +28,9 @@ class OverlayInteractionCallbacksTest {
             onSettings = { events += "settings" },
         )
         val callbacks = OverlayInteractionCallbacks(
-            onTap = { events += "tap" },
-            onStuckTap = { events += "stuck-tap" },
-            onDoubleTap = { events += "double" },
+            onTap = { events += "tap:$it" },
+            onStuckTap = { events += "stuck-tap:$it" },
+            onDoubleTap = { first, second -> events += "double:$first:$second" },
             onHeartParticles = { events += "hearts" },
             onLongPressMenu = { actions ->
                 actions.onPoke()
@@ -45,9 +45,9 @@ class OverlayInteractionCallbacksTest {
             onFlingSettled = { events += "fling-stuck:$it" },
         )
 
-        callbacks.dispatchTap(fromStuck = false)
-        callbacks.dispatchTap(fromStuck = true)
-        callbacks.dispatchDoubleTap()
+        callbacks.dispatchTap(fromStuck = false, eventTimeMs = 100L)
+        callbacks.dispatchTap(fromStuck = true, eventTimeMs = 200L)
+        callbacks.dispatchDoubleTap(firstEventTimeMs = 300L, secondEventTimeMs = 500L)
         callbacks.dispatchLongPress()
         callbacks.onDragStarted(true)
         callbacks.onDragEnded(false)
@@ -57,7 +57,7 @@ class OverlayInteractionCallbacksTest {
 
         assertEquals(
             listOf(
-                "tap", "stuck-tap", "double", "hearts",
+                "tap:100", "stuck-tap:200", "double:300:500", "hearts",
                 "poke", "pet-head", "hide", "settings",
                 "drag:true", "stuck:false", "fling:LEFT:DIZZY",
                 "fling-stuck:true",

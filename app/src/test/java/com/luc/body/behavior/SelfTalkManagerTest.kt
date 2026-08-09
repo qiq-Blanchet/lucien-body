@@ -9,11 +9,17 @@ import kotlin.random.Random
 
 class SelfTalkManagerTest {
     @Test
-    fun contentDrivenExpressionsUseOnlyTheMappingsNamedByTheSpecification() {
-        assertEquals(Expression.LONELY_1, SelfTalkManager.expressionFor("想你了"))
-        assertEquals(Expression.SLEEPY, SelfTalkManager.expressionFor("困了…但不想睡"))
-        assertEquals(Expression.SLEEPY, SelfTalkManager.expressionFor("zzZ"))
-        assertEquals(null, SelfTalkManager.expressionFor("在呢。"))
+    fun selfTalkBubbleDoesNotChangeTheCurrentExpression() {
+        val clock = MutableClock()
+        val scheduler = BehaviorScheduler(clock)
+        val sink = BehaviorSink()
+        val manager = SelfTalkManager(coordinator(sink, scheduler), scheduler, clock, Random(1))
+
+        manager.setLonelinessMode(LonelinessMode.SLEEPY)
+        scheduler.advanceBy(scheduler.nextDelayMs!!)
+
+        assertEquals(Expression.IDLE, sink.states.last().expression)
+        assertEquals("zzZ", sink.states.last().bubbleText)
     }
 
     @Test
@@ -47,6 +53,23 @@ class SelfTalkManagerTest {
 
         assertTrue(sink.states.last().bubbleText in SelfTalkManager.messagesFor(DayPeriod.MORNING))
         assertTrue(scheduler.nextDelayMs!! in 4_000L..15 * 60_000L)
+    }
+
+    @Test
+    fun thirtyMinuteSettingSchedulesBetweenTwentyFiveAndThirtyMinutes() {
+        val clock = MutableClock()
+        val scheduler = BehaviorScheduler(clock)
+        val manager = SelfTalkManager(
+            coordinator(BehaviorSink(), scheduler),
+            scheduler,
+            clock,
+            Random(5),
+            frequencyMinutes = 30,
+        )
+
+        manager.start()
+
+        assertTrue(scheduler.nextDelayMs!! in 25 * 60_000L..30 * 60_000L)
     }
 
     @Test

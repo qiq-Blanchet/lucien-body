@@ -21,7 +21,14 @@ object SpriteCatalogLoader {
             .filter(::isSafeSpriteFileName)
             .sorted()
             .map { fileName ->
-                SpriteAsset(fileName, "$ASSET_BASE_URL/$ASSET_DIRECTORY/$fileName")
+                val source = context.assets.open("$ASSET_DIRECTORY/$fileName")
+                    .bufferedReader()
+                    .use { it.readText() }
+                SpriteAsset(
+                    fileName,
+                    "$ASSET_BASE_URL/$ASSET_DIRECTORY/$fileName",
+                    SpriteCycleParser.longestDurationMs(source),
+                )
             }
 
     fun externalSprites(context: Context): List<SpriteAsset> =
@@ -29,7 +36,14 @@ object SpriteCatalogLoader {
             .asSequence()
             .filter { file -> file.isFile && isSafeSpriteFileName(file.name) }
             .sortedBy(File::getName)
-            .map { file -> SpriteAsset(file.name, "$EXTERNAL_BASE_URL$EXTERNAL_PATH${file.name}") }
+            .mapNotNull { file ->
+                val source = runCatching(file::readText).getOrNull() ?: return@mapNotNull null
+                SpriteAsset(
+                    file.name,
+                    "$EXTERNAL_BASE_URL$EXTERNAL_PATH${file.name}",
+                    SpriteCycleParser.longestDurationMs(source),
+                )
+            }
             .toList()
 
     fun merge(external: List<SpriteAsset>, bundled: List<SpriteAsset>): List<SpriteAsset> =

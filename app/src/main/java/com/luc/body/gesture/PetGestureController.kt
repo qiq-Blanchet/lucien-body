@@ -10,8 +10,8 @@ class PetGestureController(
     private val onDragStart: (fromStuck: Boolean) -> Unit,
     private val onMove: (Float, Float) -> Unit,
     private val onDragEnd: (cancelled: Boolean, fling: FlingGesture?) -> Unit,
-    private val onTap: (fromStuck: Boolean) -> Unit,
-    private val onDoubleTap: () -> Unit,
+    private val onTap: (fromStuck: Boolean, eventTimeMs: Long) -> Unit,
+    private val onDoubleTap: (firstEventTimeMs: Long, secondEventTimeMs: Long) -> Unit,
     private val onLongPress: () -> Unit,
     private val onFling: (FlingGesture) -> Unit,
 ) : View.OnTouchListener {
@@ -25,8 +25,8 @@ class PetGestureController(
         onDragStart = {},
         onMove = onMove,
         onDragEnd = { _, _ -> },
-        onTap = { onTap() },
-        onDoubleTap = onTap,
+        onTap = { _, _ -> onTap() },
+        onDoubleTap = { _, _ -> onTap() },
         onLongPress = {},
         onFling = {},
     )
@@ -123,8 +123,8 @@ class PetGestureController(
                 onMove(result.deltaX, result.deltaY)
             }
             is GestureResult.Move -> onMove(result.deltaX, result.deltaY)
-            is GestureResult.Tap -> onTap(result.fromStuck)
-            GestureResult.DoubleTap -> onDoubleTap()
+            is GestureResult.Tap -> onTap(result.fromStuck, result.eventTimeMs)
+            is GestureResult.DoubleTap -> onDoubleTap(result.firstEventTimeMs, result.secondEventTimeMs)
             GestureResult.LongPress -> onLongPress()
             is GestureResult.DragEnd -> {
                 onDragEnd(result.cancelled, result.fling)

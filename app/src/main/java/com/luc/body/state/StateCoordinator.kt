@@ -58,7 +58,6 @@ class StateCoordinator(
     private var transientTask: Cancelable? = null
 
     private var activeBubble: ActiveBubble? = null
-    private var bubbleTalkingCandidate: Candidate? = null
     private var bubbleGeneration = 0L
     private var bubbleHideTask: Cancelable? = null
 
@@ -184,9 +183,9 @@ class StateCoordinator(
         bubbleStyle: BubbleStyle = BubbleStyle.NORMAL,
     ) {
         requireOwnerThread()
-        if (closed || dragCandidate != null) return
+        if (closed || dragCandidate != null || hasActiveRemoteBubble()) return
 
-        if (expression.priority < selectedCandidate(includeBubble = false).expression.priority) return
+        if (expression.priority < selectedCandidate().expression.priority) return
 
         clearActiveBubble()
         cancelLocalReaction()
@@ -244,7 +243,7 @@ class StateCoordinator(
         revision: String? = null,
     ) {
         requireOwnerThread()
-        if (closed) return
+        if (closed || hasActiveRemoteBubble()) return
 
         val normalized = normalizeBubbleText(text)
         if (normalized == null) {
@@ -313,7 +312,6 @@ class StateCoordinator(
                 style = state.bubbleStyle,
                 revision = state.updatedAt,
                 durationMs = null,
-                requestTalking = false,
             )
         }
         val generation = ++remoteExpiryGeneration
@@ -332,22 +330,11 @@ class StateCoordinator(
         style: BubbleStyle,
         revision: String,
         durationMs: Long?,
-        requestTalking: Boolean = true,
     ) {
         clearActiveBubble()
-        val previous = selectedCandidate()
         val generation = ++bubbleGeneration
         val bubble = ActiveBubble(text, style, revision, generation)
         activeBubble = bubble
-        bubbleTalkingCandidate = if (
-            requestTalking &&
-            dragCandidate == null &&
-            Expression.TALKING.priority >= previous.expression.priority
-        ) {
-            Candidate(Expression.TALKING, nextSequence(), revision)
-        } else {
-            null
-        }
         if (durationMs != null) {
             val task = scheduler.schedule(durationMs) {
                 onBubbleExpired(generation)
@@ -405,7 +392,6 @@ class StateCoordinator(
 
         bubbleHideTask = null
         activeBubble = null
-        bubbleTalkingCandidate = null
         bubbleGeneration += 1
         renderCurrent()
     }
@@ -431,16 +417,20 @@ class StateCoordinator(
     }
 
     private fun clearActiveBubble(): Boolean {
-        val existed = activeBubble != null || bubbleTalkingCandidate != null
+        val existed = activeBubble != null
         bubbleGeneration += 1
         bubbleHideTask?.cancel()
         bubbleHideTask = null
         activeBubble = null
-        bubbleTalkingCandidate = null
         return existed
     }
 
-    private fun selectedCandidate(includeBubble: Boolean = true): Candidate {
+    private fun hasActiveRemoteBubble(): Boolean {
+        val remote = latestRemoteState ?: return false
+        return activeBubble?.revision == remote.updatedAt
+    }
+
+    private fun selectedCandidate(): Candidate {
         dragCandidate?.let { return it }
 
         val contextCandidate = contextCandidates.values.maxWithOrNull(
@@ -453,7 +443,7 @@ class StateCoordinator(
                 remoteSequence,
                 latestRemoteState!!.updatedAt,
             )
-            contextCandidate != null -> contextCandidate!!
+            contextCandidate != null -> contextCandidate
             else -> idleCandidate
         }
         return listOfNotNull(
@@ -461,7 +451,6 @@ class StateCoordinator(
             requestedCandidate,
             localReactionCandidate,
             transientCandidate,
-            bubbleTalkingCandidate.takeIf { includeBubble },
         ).maxWithOrNull(
             compareBy<Candidate> { it.expression.priority }.thenBy { it.sequence },
         ) ?: idleCandidate
