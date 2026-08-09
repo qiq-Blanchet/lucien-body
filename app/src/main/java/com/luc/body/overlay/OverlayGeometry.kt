@@ -170,8 +170,8 @@ class OverlayGeometry(
         const val DEFAULT_PET_SIZE_DP = 90
         const val BUBBLE_WIDTH_DP = 180
         const val BUBBLE_HEIGHT_DP = 120
-        const val METRICS_WINDOW_WIDTH_DP = 140
-        const val METRICS_WINDOW_HEIGHT_DP = 132
+        const val METRICS_WINDOW_WIDTH_DP = 112
+        const val METRICS_WINDOW_HEIGHT_DP = 106
         const val METRICS_PANEL_INSET_DP = 4
         const val METRICS_GAP_DP = 20
         const val EDGE_MARGIN_DP = 16
