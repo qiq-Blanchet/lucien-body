@@ -89,7 +89,7 @@ class StateCoordinatorTest {
     }
 
     @Test
-    fun tapDoubleTapAndStuckTapLockRemoteUpdatesForOnePointTwoSeconds() {
+    fun tapDoubleTapAndStuckTapUseTheConfiguredBubbleDuration() {
         val reactions = listOf<(StateCoordinator) -> Unit>(
             { it.onLocalTap() },
             { it.onDoubleTap("double") },
@@ -102,8 +102,7 @@ class StateCoordinatorTest {
         reactions.forEachIndexed { index, react ->
             val sink = RecordingSink()
             val scheduler = FakeScheduler()
-            val coordinator = coordinator(sink, scheduler)
-            coordinator.onRemoteState(remote(Expression.IDLE, revision = REVISION_1))
+            val coordinator = coordinator(sink, scheduler, bubbleBaseDurationSeconds = 10)
 
             react(coordinator)
             val expectedReaction = when (index) {
@@ -112,18 +111,14 @@ class StateCoordinatorTest {
             }
             assertEquals(expectedReaction, sink.states.last().expression)
             assertTrue(sink.states.last().bubbleText?.isNotBlank() == true)
-            coordinator.onRemoteState(remote(Expression.LOVE, revision = REVISION_2))
-            scheduler.advanceBy(1_199)
+            scheduler.advanceBy(9_999)
             assertEquals("reaction $index ended early", expectedReaction, sink.states.last().expression)
+            assertTrue(sink.states.last().bubbleText?.isNotBlank() == true)
 
             scheduler.advanceBy(1)
-            val expectedAfterLock = if (index == 2) Expression.STUCK else Expression.LOVE
+            val expectedAfterLock = if (index == 2) Expression.STUCK else Expression.IDLE
             assertEquals(expectedAfterLock, sink.states.last().expression)
             assertNull(sink.states.last().bubbleText)
-            if (index == 2) {
-                coordinator.setStuck(false)
-                assertEquals(Expression.LOVE, sink.states.last().expression)
-            }
         }
     }
 
@@ -131,44 +126,44 @@ class StateCoordinatorTest {
     fun localBubblePreservesTheReactionExpression() {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
-        val coordinator = coordinator(sink, scheduler)
+        val coordinator = coordinator(sink, scheduler, bubbleBaseDurationSeconds = 10)
 
-        coordinator.startLocalReaction(Expression.LOVE, "high priority")
+        coordinator.startLocalReaction(Expression.LOVE, "tap")
         assertEquals(Expression.LOVE, sink.states.last().expression)
-        assertEquals("high priority", sink.states.last().bubbleText)
+        assertEquals("tap", sink.states.last().bubbleText)
 
-        scheduler.advanceBy(1_200)
+        scheduler.advanceBy(9_999)
+        assertEquals(Expression.LOVE, sink.states.last().expression)
+        assertEquals("tap", sink.states.last().bubbleText)
+        scheduler.advanceBy(1)
         assertEquals(Expression.IDLE, sink.states.last().expression)
         assertNull(sink.states.last().bubbleText)
     }
 
     @Test
-    fun onlyTheNewestRemoteUpdateIsAppliedAfterALocalLock() {
+    fun remoteUpdateImmediatelyInterruptsALocalReaction() {
         val sink = RecordingSink()
-        val scheduler = FakeScheduler()
-        val coordinator = coordinator(sink, scheduler)
+        val coordinator = coordinator(sink, bubbleBaseDurationSeconds = 10)
 
         coordinator.onLocalTap()
-        coordinator.onRemoteState(remote(Expression.ANGRY, revision = REVISION_1))
-        coordinator.onRemoteState(remote(Expression.LOVE, revision = REVISION_2))
-        scheduler.advanceBy(1_200)
+        coordinator.onRemoteState(remote(Expression.PEEKING, "remote", revision = REVISION_1))
 
-        assertEquals(Expression.LOVE, sink.states.last().expression)
+        assertEquals(Expression.PEEKING, sink.states.last().expression)
+        assertEquals("remote", sink.states.last().bubbleText)
     }
 
     @Test
-    fun bufferedRemoteStateCannotLeakThroughAnUnrelatedRenderDuringLocalLock() {
+    fun localRendersCannotOverrideAnActiveRemoteState() {
         val sink = RecordingSink()
-        val scheduler = FakeScheduler()
-        val coordinator = coordinator(sink, scheduler)
+        val coordinator = coordinator(sink)
 
+        coordinator.onRemoteState(remote(Expression.PEEKING, "remote", revision = REVISION_1))
         coordinator.onLocalTap()
-        coordinator.onRemoteState(remote(Expression.LOVE, revision = REVISION_1))
         coordinator.setContextState(ContextSource.TIME_SLOT, Expression.SLEEPY)
+        coordinator.showBubble("local")
 
-        assertEquals(Expression.HAPPY, sink.states.last().expression)
-        scheduler.advanceBy(1_200)
-        assertEquals(Expression.LOVE, sink.states.last().expression)
+        assertEquals(Expression.PEEKING, sink.states.last().expression)
+        assertEquals("remote", sink.states.last().bubbleText)
     }
 
     @Test
@@ -198,26 +193,23 @@ class StateCoordinatorTest {
     }
 
     @Test
-    fun grabbedAndStuckGrabCannotBeInterruptedUntilDragEnds() {
+    fun remoteStateOverridesDragVisualsAndDragBecomesVisibleAfterRemoteExpiry() {
         val sink = RecordingSink()
-        val coordinator = coordinator(sink)
+        val scheduler = FakeScheduler()
+        val coordinator = coordinator(sink, scheduler)
 
         coordinator.beginDrag(fromStuck = false)
-        coordinator.onRemoteState(remote(Expression.LOVE, revision = REVISION_1))
-        coordinator.onTransientState(Expression.DIZZY)
-        coordinator.showBubble("cannot interrupt")
+        coordinator.onRemoteState(remote(Expression.PEEKING, "remote", revision = REVISION_1))
+        assertEquals(Expression.PEEKING, sink.states.last().expression)
+        assertEquals("remote", sink.states.last().bubbleText)
+
+        scheduler.advanceBy(3_999)
+        assertEquals(Expression.PEEKING, sink.states.last().expression)
+        scheduler.advanceBy(1)
         assertEquals(Expression.GRABBED, sink.states.last().expression)
 
         coordinator.endDrag(isStuck = false)
-        assertEquals(Expression.LOVE, sink.states.last().expression)
-
-        coordinator.setStuck(true)
-        coordinator.beginDrag(fromStuck = true)
-        coordinator.requestState(Expression.DIZZY)
-        assertEquals(Expression.STUCK_GRAB, sink.states.last().expression)
-
-        coordinator.endDrag(isStuck = true)
-        assertEquals(Expression.STUCK, sink.states.last().expression)
+        assertEquals(Expression.IDLE, sink.states.last().expression)
     }
 
     @Test
@@ -242,7 +234,7 @@ class StateCoordinatorTest {
     }
 
     @Test
-    fun transientFallbackIsStrictlyStuckThenRemoteThenContextThenIdle() {
+    fun remoteFallbackIsStrictlyStuckThenContextThenIdle() {
         val sink = RecordingSink()
         val scheduler = FakeScheduler()
         val coordinator = coordinator(sink, scheduler)
@@ -252,12 +244,12 @@ class StateCoordinatorTest {
 
         coordinator.onTransientState(Expression.DIZZY)
         scheduler.advanceBy(2_000)
+        assertEquals(Expression.HAPPY, sink.states.last().expression)
+
+        scheduler.advanceBy(2_000)
         assertEquals(Expression.STUCK, sink.states.last().expression)
 
         coordinator.setStuck(false)
-        assertEquals(Expression.HAPPY, sink.states.last().expression)
-
-        coordinator.clearRemoteState()
         assertEquals(Expression.SLEEPY, sink.states.last().expression)
 
         coordinator.setContextState(null)
@@ -446,7 +438,13 @@ class StateCoordinatorTest {
     private fun coordinator(
         sink: UiSink,
         scheduler: DelayScheduler = FakeScheduler(),
-    ) = StateCoordinator(sink, scheduler) { Expression.HAPPY }
+        bubbleBaseDurationSeconds: Int = 4,
+    ) = StateCoordinator(
+        uiSink = sink,
+        scheduler = scheduler,
+        bubbleBaseDurationSeconds = bubbleBaseDurationSeconds,
+        localExpression = { Expression.HAPPY },
+    )
 
     private fun remote(
         expression: Expression = Expression.ANGRY,

@@ -22,7 +22,9 @@ class TapFrequencyTrackerTest {
         tracker.onTap()
         assertEquals(Expression.ANGRY, sink.states.last().expression)
 
-        scheduler.advanceBy(1_200L)
+        scheduler.advanceBy(3_999L)
+        assertEquals(Expression.ANGRY, sink.states.last().expression)
+        scheduler.advanceBy(1L)
         assertEquals(Expression.IDLE, sink.states.last().expression)
     }
 
