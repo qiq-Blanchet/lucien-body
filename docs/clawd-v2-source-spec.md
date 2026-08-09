@@ -87,7 +87,7 @@
 | angry | 生气 | 短时间被戳 ≥5 次（10秒内） | 6 |
 | sleepy | 困了 | 时段触发（23:00-6:00）/ 孤独递进末期 | 3 |
 | thinking | 思考中 | 远端推送 expression="thinking" | 7 |
-| talking | 说话中 | 气泡弹出时自动切换 | 7 |
+| talking | 说话中 | 仅远端明确推送 expression="talking" | 7 |
 | love | 心动 | 远端推送 expression="love" | 8 |
 
 #### 情绪扩展
@@ -124,7 +124,7 @@
 - 远端推送（thinking/talking/love 等）>手势触发>场景状态>时段状态
 - 本地反应 1.2 秒锁定期内不被远端打断，远端状态缓存等锁定结束后应用
 - 短暂状态（dizzy/clingy/waving）有持续时长，到期自动回退
-- 远端同时下发 `expression + bubble_text` 时保留指定 expression；TALKING 只由本地点按或本地纯气泡请求，不覆盖远端 expression
+- 远端同时下发 `expression + bubble_text` 时保留指定 expression；TALKING 只由远端明确下发 `expression="talking"` 触发，本地点按、本地纯气泡和自言自语均保持当前 expression
 
 ### 5.3 素材规范
 - 格式: SVG
@@ -135,9 +135,9 @@
 - **热加载支持**：优先从 /sdcard/Android/data/{pkg}/files/clawd_sprites/ 读取；本地无则 fallback 到 assets。这样更换素材不需要重新安装 APK
 
 ### 5.4 表情切换动画
-- 默认: 0.2 秒 crossfade（旧表情淡出 + 新表情淡入）
-- 特殊: angry 抖动（CSS shake）、dizzy 旋转、dancing 上下弹跳
-- 在 clawd.html 内用 CSS animation 实现
+- expression 改变时立即切换对应随机池素材；同一 expression 重绘时，当前 SVG 至少完成其最长 CSS animation duration 一轮后才允许更换变体
+- 动画周期从实际 SVG CSS 解析，不修改 37 份原始素材；加载时只兼容原件中小写 `viewbox` 的写法
+- 特殊动作由各 SVG 内的 CSS animation 实现
 
 ## 六、气泡系统
 
@@ -154,7 +154,7 @@
 - 显示时长: 默认 4 秒，长文本按字数延长（每10字 +1秒，上限 10秒）
 - 出现动画: 从小到大弹出（CSS scale 0→1 + ease-out）
 - 消失动画: 淡出（opacity 1→0, 0.3s）
-- 本地气泡消失后 talking 状态自动回退到前一状态；远端气泡显示期间保持同条消息指定的 expression
+- 本地气泡只显示文字并保持当前 expression；远端气泡显示期间保持同条消息指定的 expression
 
 ### 6.3 自言自语系统（本地）
 - 无远端推送且无互动时，桌宠随机冒气泡
@@ -199,7 +199,7 @@
 "（揉眼睛）"
 ```
 
-- 自言自语期间表情随内容切换（如"想你了"→ lonely_1，"困了"→ sleepy）
+- 自言自语只显示气泡，不切换或打断当前 expression
 - 收到远端推送或用户触摸时，自言自语立即中断，切换到对应状态
 
 ## 七、孤独递进系统
@@ -505,7 +505,7 @@ Codex请严格按此表实现 StateCoordinator 的优先级仲裁。
 | 8 | love | 远端推送 | 亲密内容 |
 | 8 | dancing | 远端推送/连续双击 | 特殊触发 |
 | 7 | thinking | 远端推送 | 正在生成回复 |
-| 7 | talking | 气泡弹出 | 正在说话 |
+| 7 | talking | 远端明确推送 | 正在说话 |
 | 6 | angry | 本地（10秒内≥5次tap） | 被戳烦了 |
 | 6 | shocked | 远端推送 | 突发事件 |
 | 5 | happy | 手势（双击）/远端 | 开心 |

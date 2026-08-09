@@ -19,9 +19,11 @@ class TimeSlotManager(
     private val coordinator: StateCoordinator,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val random: Random = Random.Default,
+    private val bubblesEnabled: Boolean = true,
 ) : AutoCloseable {
     private var closed = false
     private var morningShownOn: LocalDate? = null
+    private var lastBubbleOccurrence: BubbleOccurrence? = null
 
     fun refresh(): Expression? {
         if (closed) return null
@@ -30,7 +32,7 @@ class TimeSlotManager(
         val date = now.toLocalDate()
         val expression = when {
             time >= LocalTime.of(1, 0) && time < LocalTime.of(6, 0) -> {
-                coordinator.showBubble(LATE_NIGHT_BUBBLE)
+                showBubbleOnce(date, BubbleSlot.LATE_NIGHT, LATE_NIGHT_BUBBLE)
                 Expression.SLEEPY
             }
             time >= LocalTime.of(6, 0) && time < LocalTime.of(9, 0) -> {
@@ -38,23 +40,24 @@ class TimeSlotManager(
                 if (morningShownOn != date) {
                     morningShownOn = date
                     coordinator.onTransientState(Expression.MORNING)
-                    coordinator.showBubble(MORNING_BUBBLE)
+                    showBubbleOnce(date, BubbleSlot.MORNING, MORNING_BUBBLE)
                     return Expression.MORNING
                 }
                 return null
             }
             time >= LocalTime.of(11, 30) && time < LocalTime.of(13, 0) ->
                 Expression.EATING.takeIf { random.nextBoolean() }?.also {
-                    coordinator.showBubble(LUNCH_BUBBLE)
+                    showBubbleOnce(date, BubbleSlot.LUNCH, LUNCH_BUBBLE)
                 }
             time >= LocalTime.of(13, 0) && time < LocalTime.of(17, 0) ->
                 Expression.SLEEPY.takeIf { random.nextBoolean() }
             time >= LocalTime.of(17, 30) && time < LocalTime.of(19, 0) ->
                 Expression.EATING.takeIf { random.nextBoolean() }?.also {
-                    coordinator.showBubble(DINNER_BUBBLE)
+                    showBubbleOnce(date, BubbleSlot.DINNER, DINNER_BUBBLE)
                 }
             time >= LocalTime.of(23, 0) || time < LocalTime.of(1, 0) -> {
-                coordinator.showBubble(NIGHT_BUBBLE)
+                val occurrenceDate = if (time < LocalTime.of(1, 0)) date.minusDays(1) else date
+                showBubbleOnce(occurrenceDate, BubbleSlot.NIGHT, NIGHT_BUBBLE)
                 Expression.NIGHT
             }
             else -> null
@@ -63,9 +66,20 @@ class TimeSlotManager(
         return expression
     }
 
+    private fun showBubbleOnce(occurrenceDate: LocalDate, slot: BubbleSlot, text: String) {
+        if (!bubblesEnabled) return
+        val occurrence = BubbleOccurrence(occurrenceDate, slot)
+        if (lastBubbleOccurrence == occurrence) return
+        lastBubbleOccurrence = occurrence
+        coordinator.showBubble(text)
+    }
+
     override fun close() {
         closed = true
     }
+
+    private enum class BubbleSlot { MORNING, LUNCH, DINNER, NIGHT, LATE_NIGHT }
+    private data class BubbleOccurrence(val date: LocalDate, val slot: BubbleSlot)
 
     companion object {
         fun periodAt(time: LocalTime): DayPeriod = when {

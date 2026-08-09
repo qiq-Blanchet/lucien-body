@@ -9,6 +9,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewAssetLoader
 import com.luc.body.sprite.ExternalSpritePathHandler
+import com.luc.body.sprite.NormalizingAssetsPathHandler
+import com.luc.body.sprite.SpritePlaybackGate
 import com.luc.body.sprite.SpriteCatalogLoader
 import com.luc.body.state.UiSink
 import com.luc.body.state.VisibleState
@@ -20,11 +22,13 @@ class WebRenderer(
     private val externalSpriteDirectory = SpriteCatalogLoader.externalDirectory(petWebView.context)
     private val spriteCatalog = SpriteCatalogLoader.load(petWebView.context)
     private val assetLoader = WebViewAssetLoader.Builder().apply {
-        addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(petWebView.context))
+        addPathHandler("/assets/", NormalizingAssetsPathHandler(petWebView.context))
         externalSpriteDirectory?.let { directory ->
             addPathHandler(SpriteCatalogLoader.EXTERNAL_PATH, ExternalSpritePathHandler(directory))
         }
     }.build()
+    private val playbackGate = SpritePlaybackGate(spriteCatalog)
+    private var renderedSprite: Pair<String, String>? = null
     private val renderGate = WebRenderGate(::renderReadyState)
 
     init {
@@ -43,11 +47,16 @@ class WebRenderer(
     }
 
     private fun renderReadyState(state: VisibleState) {
-        val sprite = spriteCatalog.choose(state.expression.name)
-        petWebView.evaluateJavascript(
-            JavascriptCommandBuilder.setSprite(sprite.url, state.expression.name.lowercase()),
-            null,
-        )
+        val stateId = state.expression.id
+        val sprite = playbackGate.select(stateId)
+        val spriteCommandKey = sprite.url to stateId
+        if (spriteCommandKey != renderedSprite) {
+            renderedSprite = spriteCommandKey
+            petWebView.evaluateJavascript(
+                JavascriptCommandBuilder.setSprite(sprite.url, stateId),
+                null,
+            )
+        }
         val bubbleCommand = state.bubbleText?.let {
             JavascriptCommandBuilder.showBubble(
                 text = it,

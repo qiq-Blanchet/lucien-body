@@ -31,9 +31,9 @@ sealed interface GestureResult {
         val deltaY: Float,
     ) : GestureResult
 
-    data class Tap(val fromStuck: Boolean) : GestureResult
+    data class Tap(val fromStuck: Boolean, val eventTimeMs: Long) : GestureResult
 
-    data object DoubleTap : GestureResult
+    data class DoubleTap(val firstEventTimeMs: Long, val secondEventTimeMs: Long) : GestureResult
 
     data object LongPress : GestureResult
 
@@ -83,6 +83,7 @@ class GestureClassifier(
             downTimeMs = eventTimeMs,
             fromStuck = fromStuck,
             secondTap = isSecondTap,
+            firstTapUpTimeMs = previousTap?.upTimeMs.takeIf { isSecondTap },
         )
         return GestureResult.None
     }
@@ -135,7 +136,12 @@ class GestureClassifier(
             pendingTap = null
             return GestureResult.None
         }
-        if (current.secondTap) return GestureResult.DoubleTap
+        if (current.secondTap) {
+            return GestureResult.DoubleTap(
+                firstEventTimeMs = requireNotNull(current.firstTapUpTimeMs),
+                secondEventTimeMs = eventTimeMs,
+            )
+        }
         pendingTap = PendingTap(eventTimeMs, current.fromStuck)
         return GestureResult.None
     }
@@ -167,7 +173,7 @@ class GestureClassifier(
         val tap = pendingTap
         if (tap != null && eventTimeMs > safeAdd(tap.upTimeMs, doubleTapWindowMs)) {
             pendingTap = null
-            return GestureResult.Tap(tap.fromStuck)
+            return GestureResult.Tap(tap.fromStuck, tap.upTimeMs)
         }
         return GestureResult.None
     }
@@ -220,6 +226,7 @@ class GestureClassifier(
         val downTimeMs: Long,
         val fromStuck: Boolean,
         val secondTap: Boolean,
+        val firstTapUpTimeMs: Long?,
         val dragStarted: Boolean = false,
         val longPressed: Boolean = false,
         val velocityX: Float = 0f,

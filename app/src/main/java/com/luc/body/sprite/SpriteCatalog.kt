@@ -6,6 +6,7 @@ import kotlin.random.Random
 data class SpriteAsset(
     val fileName: String,
     val url: String,
+    val cycleDurationMs: Long = 1_000L,
 )
 
 class SpriteCatalog(

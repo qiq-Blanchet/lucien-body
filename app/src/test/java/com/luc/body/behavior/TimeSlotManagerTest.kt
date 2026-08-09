@@ -78,6 +78,71 @@ class TimeSlotManagerTest {
     }
 
     @Test
+    fun repeatedRefreshInTheSameSlotDoesNotRestartItsBubble() {
+        val clock = Clock.fixed(Instant.parse("2026-08-04T02:00:00Z"), ZoneOffset.UTC)
+        val scheduler = BehaviorScheduler(MutableClock())
+        val sink = BehaviorSink()
+        val manager = TimeSlotManager(coordinator(sink, scheduler), clock, FixedBooleanRandom(true))
+
+        manager.refresh()
+        val firstRevision = sink.states.last().revision
+        manager.refresh()
+
+        assertEquals(firstRevision, sink.states.last().revision)
+    }
+
+    @Test
+    fun nightBubbleIsNotRestartedAtTheMidnightDateBoundary() {
+        val clock = MutableClock(Instant.parse("2026-08-04T23:59:00Z"))
+        val scheduler = BehaviorScheduler(clock)
+        val sink = BehaviorSink()
+        val manager = TimeSlotManager(coordinator(sink, scheduler), clock, FixedBooleanRandom(true))
+
+        manager.refresh()
+        val firstRevision = sink.states.last().revision
+        clock.advanceBy(2 * 60_000L)
+        manager.refresh()
+
+        assertEquals(firstRevision, sink.states.last().revision)
+    }
+
+    @Test
+    fun disabledLocalSpeechKeepsTimeSlotExpressionButHidesItsBubble() {
+        val clock = Clock.fixed(Instant.parse("2026-08-04T02:00:00Z"), ZoneOffset.UTC)
+        val sink = BehaviorSink()
+        val manager = TimeSlotManager(
+            coordinator(sink, BehaviorScheduler(MutableClock())),
+            clock,
+            FixedBooleanRandom(true),
+            bubblesEnabled = false,
+        )
+
+        assertEquals(Expression.SLEEPY, manager.refresh())
+        assertEquals(Expression.SLEEPY, sink.states.last().expression)
+        assertNull(sink.states.last().bubbleText)
+    }
+
+    @Test
+    fun timeSlotRefreshCannotReplaceAnActiveRemoteBubble() {
+        val clock = Clock.fixed(Instant.parse("2026-08-04T02:00:00Z"), ZoneOffset.UTC)
+        val sink = BehaviorSink()
+        val stateCoordinator = coordinator(sink, BehaviorScheduler(MutableClock()))
+        stateCoordinator.onRemoteState(
+            com.luc.body.state.RemoteState(
+                Expression.TALKING,
+                "remote",
+                com.luc.body.state.BubbleStyle.NORMAL,
+                "2026-08-04T02:00:00Z",
+            ),
+        )
+
+        TimeSlotManager(stateCoordinator, clock, FixedBooleanRandom(true)).refresh()
+
+        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals("remote", sink.states.last().bubbleText)
+    }
+
+    @Test
     fun closePreventsFurtherWrites() {
         val clock = Clock.fixed(Instant.parse("2026-08-04T11:30:00Z"), ZoneOffset.UTC)
         val scheduler = BehaviorScheduler(MutableClock())
@@ -85,7 +150,7 @@ class TimeSlotManagerTest {
         val manager = TimeSlotManager(coordinator(sink, scheduler), clock, FixedBooleanRandom(true))
 
         assertEquals(Expression.EATING, manager.refresh())
-        assertEquals(Expression.TALKING, sink.states.last().expression)
+        assertEquals(Expression.EATING, sink.states.last().expression)
         manager.close()
         val renderCount = sink.states.size
 

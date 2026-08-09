@@ -1,7 +1,6 @@
 package com.luc.body.behavior
 
 import com.luc.body.state.Cancelable
-import com.luc.body.state.ContextSource
 import com.luc.body.state.Expression
 import com.luc.body.state.DelayScheduler
 import com.luc.body.state.StateCoordinator
@@ -34,7 +33,6 @@ class SelfTalkManager(
     private var task: Cancelable? = null
     private var bubbleTask: Cancelable? = null
     private var ownBubbleVisible = false
-    private var ownExpressionActive = false
     var lonelinessMode: LonelinessMode = LonelinessMode.NORMAL
         private set
 
@@ -102,7 +100,6 @@ class SelfTalkManager(
                 LonelinessMode.SLEEPY -> SLEEPY_MESSAGES
             }
             val message = pool[random.nextInt(pool.size)]
-            setOwnExpression(expressionFor(message))
             coordinator.showBubble(message)
             ownBubbleVisible = true
             bubbleTask?.cancel()
@@ -110,7 +107,6 @@ class SelfTalkManager(
                 if (closed || !ownBubbleVisible) return@schedule
                 ownBubbleVisible = false
                 bubbleTask = null
-                setOwnExpression(null)
             }
             scheduleNext()
         }
@@ -130,16 +126,9 @@ class SelfTalkManager(
     private fun hideOwnBubble() {
         bubbleTask?.cancel()
         bubbleTask = null
-        setOwnExpression(null)
         if (!ownBubbleVisible) return
         ownBubbleVisible = false
         coordinator.hideBubble()
-    }
-
-    private fun setOwnExpression(expression: Expression?) {
-        if (expression == null && !ownExpressionActive) return
-        coordinator.setContextState(ContextSource.SELF_TALK, expression)
-        ownExpressionActive = expression != null
     }
 
     companion object {

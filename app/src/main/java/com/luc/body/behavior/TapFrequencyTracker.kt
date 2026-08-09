@@ -2,27 +2,24 @@ package com.luc.body.behavior
 
 import com.luc.body.state.Expression
 import com.luc.body.state.StateCoordinator
-import java.time.Clock
-import java.time.Instant
 import java.util.ArrayDeque
 
 class TapFrequencyTracker(
     private val coordinator: StateCoordinator,
-    private val clock: Clock = Clock.systemDefaultZone(),
+    private val monotonicClockMs: () -> Long = { System.nanoTime() / 1_000_000L },
 ) : AutoCloseable {
-    private val taps = ArrayDeque<Instant>()
+    private val taps = ArrayDeque<Long>()
     private var closed = false
 
-    fun onTap() {
+    fun onTap(eventTimeMs: Long = monotonicClockMs()) {
         if (closed) return
-        val now = clock.instant()
-        taps.addLast(now)
-        val windowStart = now.minusMillis(TEN_SECONDS_MS)
-        while (taps.peekFirst()?.isBefore(windowStart) == true) taps.removeFirst()
+        taps.addLast(eventTimeMs)
+        val windowStart = eventTimeMs - TEN_SECONDS_MS
+        while (taps.peekFirst()?.let { it < windowStart } == true) taps.removeFirst()
 
         if (taps.size >= 5) {
             taps.clear()
-            coordinator.requestState(Expression.ANGRY)
+            coordinator.startLocalReaction(Expression.ANGRY)
         }
     }
 

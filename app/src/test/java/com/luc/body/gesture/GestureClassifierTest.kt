@@ -1,5 +1,10 @@
 package com.luc.body.gesture
 
+import com.luc.body.behavior.BehaviorScheduler
+import com.luc.body.behavior.BehaviorSink
+import com.luc.body.behavior.MutableClock
+import com.luc.body.behavior.TapFrequencyTracker
+import com.luc.body.behavior.coordinator
 import com.luc.body.state.Expression
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -32,7 +37,7 @@ class GestureClassifierTest {
         assertEquals(GestureResult.None, classifier.onTimeout(400))
 
         classifier.onDown(20f, 20f, 400)
-        assertEquals(GestureResult.DoubleTap, classifier.onUp(20f, 20f, 450))
+        assertEquals(GestureResult.DoubleTap(100L, 450L), classifier.onUp(20f, 20f, 450))
     }
 
     @Test
@@ -42,7 +47,7 @@ class GestureClassifierTest {
         classifier.onUp(0f, 0f, 100)
 
         assertEquals(GestureResult.None, classifier.onTimeout(400))
-        assertEquals(GestureResult.Tap(fromStuck = true), classifier.onTimeout(401))
+        assertEquals(GestureResult.Tap(fromStuck = true, eventTimeMs = 100L), classifier.onTimeout(401))
     }
 
     @Test
@@ -77,7 +82,7 @@ class GestureClassifierTest {
         assertEquals(GestureResult.None, classifier.onMove(60f, 50f, 2, pointerId = 8))
         assertEquals(GestureResult.None, classifier.onUp(60f, 50f, 3, pointerId = 8))
         assertEquals(GestureResult.None, classifier.onUp(0f, 0f, 100, pointerId = 4))
-        assertEquals(GestureResult.Tap(false), classifier.onTimeout(401))
+        assertEquals(GestureResult.Tap(false, 100L), classifier.onTimeout(401))
     }
 
     @Test
@@ -132,8 +137,8 @@ class GestureClassifierTest {
             onDragStart = { events += "start:$it" },
             onMove = { x, y -> events += "move:$x,$y" },
             onDragEnd = { cancelled, fling -> events += "end:$cancelled:${fling?.direction}" },
-            onTap = { events += "tap:$it" },
-            onDoubleTap = { events += "double" },
+            onTap = { stuck, time -> events += "tap:$stuck:$time" },
+            onDoubleTap = { first, second -> events += "double:$first:$second" },
             onLongPress = { events += "long" },
             onFling = { fling ->
                 events += "fling:${fling.direction}:${fling.velocityX.toInt()},${fling.velocityY.toInt()}"
@@ -152,6 +157,35 @@ class GestureClassifierTest {
             ),
             events,
         )
+    }
+
+    @Test
+    fun `controller forwards exact physical tap times to the frequency tracker`() {
+        val scheduler = BehaviorScheduler(MutableClock())
+        val sink = BehaviorSink()
+        val tracker = TapFrequencyTracker(coordinator(sink, scheduler)) { 0L }
+        val controller = PetGestureController(
+            classifier = classifier(),
+            isStuck = { false },
+            onDragStart = {},
+            onMove = { _, _ -> },
+            onDragEnd = { _, _ -> },
+            onTap = { _, time -> tracker.onTap(time) },
+            onDoubleTap = { first, second ->
+                tracker.onTap(first)
+                tracker.onTap(second)
+            },
+            onLongPress = {},
+            onFling = {},
+        )
+
+        listOf(0L to ACTION_DOWN, 100L to ACTION_UP, 200L to ACTION_DOWN, 300L to ACTION_UP,
+            400L to ACTION_DOWN, 500L to ACTION_UP, 600L to ACTION_DOWN, 700L to ACTION_UP,
+            800L to ACTION_DOWN, 900L to ACTION_UP,
+        ).forEach { (time, action) -> controller.onPointerEvent(action, 0f, 0f, time) }
+        controller.onTimeout(1_201L)
+
+        assertEquals(Expression.ANGRY, sink.states.last().expression)
     }
 
     private companion object {

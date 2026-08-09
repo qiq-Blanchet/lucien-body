@@ -11,7 +11,7 @@ class TapFrequencyTrackerTest {
         val clock = MutableClock()
         val scheduler = BehaviorScheduler(clock)
         val sink = BehaviorSink()
-        val tracker = TapFrequencyTracker(coordinator(sink, scheduler), clock)
+        val tracker = TapFrequencyTracker(coordinator(sink, scheduler)) { clock.millis() }
 
         repeat(4) {
             tracker.onTap()
@@ -21,6 +21,22 @@ class TapFrequencyTrackerTest {
 
         tracker.onTap()
         assertEquals(Expression.ANGRY, sink.states.last().expression)
+
+        scheduler.advanceBy(1_200L)
+        assertEquals(Expression.IDLE, sink.states.last().expression)
+    }
+
+    @Test
+    fun exactPhysicalTapTimesTriggerAngryAfterTheFifthTap() {
+        val scheduler = BehaviorScheduler(MutableClock())
+        val sink = BehaviorSink()
+        val tracker = TapFrequencyTracker(coordinator(sink, scheduler)) { 0L }
+
+        listOf(100L, 350L, 1_000L, 1_200L).forEach(tracker::onTap)
+        assertTrue(sink.states.isEmpty())
+        tracker.onTap(1_400L)
+
+        assertEquals(Expression.ANGRY, sink.states.last().expression)
     }
 
     @Test
@@ -28,13 +44,25 @@ class TapFrequencyTrackerTest {
         val clock = MutableClock()
         val scheduler = BehaviorScheduler(clock)
         val sink = BehaviorSink()
-        val tracker = TapFrequencyTracker(coordinator(sink, scheduler), clock)
+        val tracker = TapFrequencyTracker(coordinator(sink, scheduler)) { clock.millis() }
 
         repeat(4) {
             tracker.onTap()
             clock.advanceBy(3_000L)
         }
         tracker.onTap()
+
+        assertTrue(sink.states.isEmpty())
+    }
+
+    @Test
+    fun exactPhysicalTapTimesDoNotCreateADoubleTapBoundaryFalsePositive() {
+        val sink = BehaviorSink()
+        val tracker = TapFrequencyTracker(
+            coordinator(sink, BehaviorScheduler(MutableClock())),
+        ) { 0L }
+
+        listOf(0L, 300L, 10_100L, 10_200L, 10_300L).forEach(tracker::onTap)
 
         assertTrue(sink.states.isEmpty())
     }
