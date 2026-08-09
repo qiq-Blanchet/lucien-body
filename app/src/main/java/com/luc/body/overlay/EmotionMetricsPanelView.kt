@@ -16,20 +16,20 @@ import java.util.Locale
 class EmotionMetricsPanelView(context: Context) : View(context) {
     private val density = resources.displayMetrics.density
     private val panelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        setShadowLayer(dp(8f), 0f, dp(4f), Color.argb(42, 178, 83, 115))
+        setShadowLayer(dp(7f), 0f, dp(3f), Color.argb(42, 178, 83, 115))
     }
     private val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(143, 82, 102)
-        textSize = sp(12f)
+        textSize = sp(10f)
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(128, 80, 97)
-        textSize = sp(10f)
+        textSize = sp(8.5f)
     }
     private val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(176, 110, 132)
-        textSize = sp(10f)
+        textSize = sp(8.5f)
         textAlign = Paint.Align.RIGHT
     }
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -64,7 +64,7 @@ class EmotionMetricsPanelView(context: Context) : View(context) {
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         super.onSizeChanged(width, height, oldWidth, oldHeight)
-        panelRect.set(dp(4f), dp(4f), width - dp(4f), height - dp(4f))
+        panelRect.set(dp(3f), dp(3f), width - dp(3f), height - dp(3f))
         panelPaint.shader = LinearGradient(
             panelRect.left,
             panelRect.top,
@@ -75,9 +75,9 @@ class EmotionMetricsPanelView(context: Context) : View(context) {
             Shader.TileMode.CLAMP,
         )
         fillPaint.shader = LinearGradient(
-            dp(15f),
+            dp(13f),
             0f,
-            width - dp(15f),
+            width - dp(13f),
             0f,
             Color.rgb(247, 184, 202),
             Color.rgb(236, 128, 159),
@@ -88,27 +88,27 @@ class EmotionMetricsPanelView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (metrics == null) return
-        canvas.drawRoundRect(panelRect, dp(16f), dp(16f), panelPaint)
-        canvas.drawText("情绪状态", dp(15f), dp(25f), titlePaint)
-        canvas.drawCircle(width - dp(18f), dp(19f), dp(7f), haloPaint)
-        canvas.drawCircle(width - dp(18f), dp(19f), dp(3.5f), dotPaint)
+        canvas.drawRoundRect(panelRect, dp(14f), dp(14f), panelPaint)
+        canvas.drawText("情绪状态", dp(13f), dp(21f), titlePaint)
+        canvas.drawCircle(width - dp(15f), dp(16f), dp(6f), haloPaint)
+        canvas.drawCircle(width - dp(15f), dp(16f), dp(3f), dotPaint)
         rows.forEachIndexed { index, row -> drawRow(canvas, row, index) }
     }
 
     private fun drawRow(canvas: Canvas, row: MetricRow, index: Int) {
-        val labelBaseline = dp(48f + index * 28f)
-        val trackTop = dp(54f + index * 28f)
-        val left = dp(15f)
-        val right = width - dp(15f)
-        trackRect.set(left, trackTop, right, trackTop + dp(5f))
+        val labelBaseline = dp(41f + index * 24f)
+        val trackTop = dp(46f + index * 24f)
+        val left = dp(13f)
+        val right = width - dp(13f)
+        trackRect.set(left, trackTop, right, trackTop + dp(4f))
         canvas.drawText(row.label, left, labelBaseline, labelPaint)
         canvas.drawText(row.value ?: "—", right, labelBaseline, valuePaint)
-        canvas.drawRoundRect(trackRect, dp(3f), dp(3f), trackPaint)
+        canvas.drawRoundRect(trackRect, dp(2.5f), dp(2.5f), trackPaint)
 
         val ratio = row.ratio?.coerceIn(0f, 1f) ?: return
         if (ratio <= 0f) return
         fillRect.set(left, trackTop, left + trackRect.width() * ratio, trackRect.bottom)
-        canvas.drawRoundRect(fillRect, dp(3f), dp(3f), fillPaint)
+        canvas.drawRoundRect(fillRect, dp(2.5f), dp(2.5f), fillPaint)
     }
 
     private fun rowsFor(metrics: EmotionMetrics): List<MetricRow> = listOf(
