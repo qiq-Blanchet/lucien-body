@@ -92,7 +92,7 @@ class OverlayGeometryTest {
 
         val metrics = geometry.metricsPlacement(500, 400, SafeBoundsPx(0, 0, 1_000, 1_000))
 
-        assertEquals(MetricsPlacementPx(x = 382, y = 409), metrics)
+        assertEquals(MetricsPlacementPx(x = 382, y = 383), metrics)
     }
 
     @Test
@@ -104,16 +104,16 @@ class OverlayGeometryTest {
         val metrics = geometry.metricsPlacement(pet.petX, pet.petY, bounds)
 
         assertEquals(0, pet.petX)
-        assertEquals(MetricsPlacementPx(x = 76, y = 409), metrics)
+        assertEquals(MetricsPlacementPx(x = 76, y = 383), metrics)
     }
 
     @Test
-    fun metricsPanelCentersVerticallyWithoutChangingPetOrBubbleCoordinates() {
+    fun metricsPanelClampsVerticallyWithoutChangingPetOrBubbleCoordinates() {
         val geometry = OverlayGeometry(density = 1f)
         val bounds = SafeBoundsPx(0, 100, 1_000, 400)
         val pet = geometry.movePet(500, 100, bounds)
 
-        assertEquals(MetricsPlacementPx(x = 382, y = 109), geometry.metricsPlacement(pet.petX, pet.petY, bounds))
+        assertEquals(MetricsPlacementPx(x = 382, y = 100), geometry.metricsPlacement(pet.petX, pet.petY, bounds))
         assertEquals(500, pet.petX)
         assertEquals(100, pet.petY)
         assertEquals(455, pet.bubbleX)
