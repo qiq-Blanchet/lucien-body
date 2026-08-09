@@ -39,7 +39,6 @@ class StateCoordinator(
     private var newestIsoRevision: Instant? = null
     private var latestRemoteState: RemoteState? = null
     private var remoteSequence = 0L
-    private var bufferedRemoteState: RemoteState? = null
     private var remoteExpiryGeneration = 0L
     private var remoteExpiryTask: Cancelable? = null
 
@@ -71,10 +70,6 @@ class StateCoordinator(
 
         val normalized = state.copy(bubbleText = normalizeBubbleText(state.bubbleText))
         newestIsoRevision = instant
-        if (localReactionCandidate != null || dragCandidate != null) {
-            bufferedRemoteState = normalized
-            return
-        }
         applyRemoteState(normalized)
     }
 
@@ -84,7 +79,6 @@ class StateCoordinator(
 
         cancelRemoteExpiry()
         latestRemoteState = null
-        bufferedRemoteState = null
         clearActiveBubble()
         renderCurrent()
     }
@@ -136,10 +130,12 @@ class StateCoordinator(
         requireOwnerThread()
         if (closed || dragCandidate != null) return
 
-        cancelLocalReaction()
-        cancelTransient()
-        clearActiveBubble()
-        requestedCandidate = null
+        if (latestRemoteState == null) {
+            cancelLocalReaction()
+            cancelTransient()
+            clearActiveBubble()
+            requestedCandidate = null
+        }
         dragCandidate = candidate(
             if (fromStuck) Expression.STUCK_GRAB else Expression.GRABBED,
             "drag",
@@ -154,13 +150,7 @@ class StateCoordinator(
         dragCandidate = null
         stuck = isStuck
         stuckSequence = nextSequence()
-        val buffered = bufferedRemoteState
-        bufferedRemoteState = null
-        if (buffered != null) {
-            applyRemoteState(buffered)
-        } else {
-            renderCurrent()
-        }
+        renderCurrent()
     }
 
     fun onLocalTap() {
@@ -183,17 +173,19 @@ class StateCoordinator(
         bubbleStyle: BubbleStyle = BubbleStyle.NORMAL,
     ) {
         requireOwnerThread()
-        if (closed || dragCandidate != null || hasActiveRemoteBubble()) return
+        if (closed || dragCandidate != null || latestRemoteState != null) return
 
         if (expression.priority < selectedCandidate().expression.priority) return
 
         clearActiveBubble()
         cancelLocalReaction()
         requestedCandidate = null
+        val normalizedBubble = normalizeBubbleText(bubbleText)
+        val durationMs = bubbleDurationMs(normalizedBubble.orEmpty(), bubbleBaseSeconds)
         val reaction = candidate(expression, "local")
         localReactionCandidate = reaction
         val generation = ++localReactionGeneration
-        val task = scheduler.schedule(LOCAL_REACTION_DURATION_MS) {
+        val task = scheduler.schedule(durationMs) {
             onLocalReactionExpired(generation)
         }
         if (closed || generation != localReactionGeneration || localReactionCandidate !== reaction) {
@@ -201,7 +193,6 @@ class StateCoordinator(
             return
         }
         localReactionTask = task
-        val normalizedBubble = normalizeBubbleText(bubbleText)
         if (normalizedBubble == null) {
             renderCurrent()
         } else {
@@ -243,7 +234,7 @@ class StateCoordinator(
         revision: String? = null,
     ) {
         requireOwnerThread()
-        if (closed || hasActiveRemoteBubble()) return
+        if (closed || latestRemoteState != null) return
 
         val normalized = normalizeBubbleText(text)
         if (normalized == null) {
@@ -291,13 +282,13 @@ class StateCoordinator(
         cancelTransient()
         cancelRemoteExpiry()
         clearActiveBubble()
-        bufferedRemoteState = null
         requestedCandidate = null
         contextCandidates.clear()
         dragCandidate = null
     }
 
     private fun applyRemoteState(state: RemoteState) {
+        cancelLocalReaction()
         cancelRemoteExpiry()
         latestRemoteState = state
         remoteSequence = nextSequence()
@@ -356,13 +347,7 @@ class StateCoordinator(
         localReactionCandidate = null
         localReactionGeneration += 1
         clearActiveBubble()
-        val buffered = bufferedRemoteState
-        bufferedRemoteState = null
-        if (buffered != null) {
-            applyRemoteState(buffered)
-        } else {
-            renderCurrent()
-        }
+        renderCurrent()
     }
 
     private fun onTransientExpired(generation: Long) {
@@ -425,12 +410,10 @@ class StateCoordinator(
         return existed
     }
 
-    private fun hasActiveRemoteBubble(): Boolean {
-        val remote = latestRemoteState ?: return false
-        return activeBubble?.revision == remote.updatedAt
-    }
-
     private fun selectedCandidate(): Candidate {
+        latestRemoteState?.let { remote ->
+            return Candidate(remote.expression, remoteSequence, remote.updatedAt)
+        }
         dragCandidate?.let { return it }
 
         val contextCandidate = contextCandidates.values.maxWithOrNull(
@@ -438,11 +421,6 @@ class StateCoordinator(
         )
         val fallback = when {
             stuck -> Candidate(Expression.STUCK, stuckSequence, "stuck-$stuckSequence")
-            latestRemoteState != null -> Candidate(
-                latestRemoteState!!.expression,
-                remoteSequence,
-                latestRemoteState!!.updatedAt,
-            )
             contextCandidate != null -> contextCandidate
             else -> idleCandidate
         }
@@ -502,7 +480,6 @@ class StateCoordinator(
     }
 
     companion object {
-        private const val LOCAL_REACTION_DURATION_MS = 1_200L
         private const val DEFAULT_BUBBLE_DURATION_SECONDS = 4
         private const val MAX_BUBBLE_DURATION_SECONDS = 10
         private val TRANSIENT_DURATIONS_MS = mapOf(

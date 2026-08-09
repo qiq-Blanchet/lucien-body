@@ -8,7 +8,7 @@ class BubbleLayoutContractTest {
     @Test
     fun belowPetPlacementUsesTheTopEdgeWithAFourPixelGap() {
         val html = File("src/main/assets/bubble.html").readText()
-        val css = File("src/main/assets/css/bubble.css").readText()
+        val css = File("src/main/assets/css/bubble.css").readText().replace("\r\n", "\n")
 
         assertTrue(html.contains("classList.toggle(\"bubble-below\", Boolean(belowPet))"))
         assertTrue(css.contains("body.bubble-below {\n  align-items: flex-start;"))
