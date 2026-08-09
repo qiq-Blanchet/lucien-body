@@ -59,4 +59,16 @@ class JavascriptCommandBuilderTest {
     fun hideBubbleUsesNoArguments() {
         assertEquals("window.LucBubble.hide()", JavascriptCommandBuilder.hideBubble())
     }
+
+    @Test
+    fun bubblePlacementUsesABooleanLiteral() {
+        assertEquals(
+            "window.LucBubble.setPlacement(true)",
+            JavascriptCommandBuilder.setBubbleBelowPet(true),
+        )
+        assertEquals(
+            "window.LucBubble.setPlacement(false)",
+            JavascriptCommandBuilder.setBubbleBelowPet(false),
+        )
+    }
 }

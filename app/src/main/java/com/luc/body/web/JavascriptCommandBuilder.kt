@@ -20,4 +20,7 @@ object JavascriptCommandBuilder {
     }
 
     fun hideBubble(): String = "window.LucBubble.hide()"
+
+    fun setBubbleBelowPet(belowPet: Boolean): String =
+        "window.LucBubble.setPlacement($belowPet)"
 }

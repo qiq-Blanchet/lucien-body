@@ -36,8 +36,8 @@
 - 尺寸: 180×120dp
 - 内容: WebView 加载 bubble.html，渲染气泡文字
 - 触摸: FLAG_NOT_TOUCHABLE，全区域触摸穿透
-- 定位: 气泡沉底显示（CSS: body { display:flex; align-items:flex-end; justify-content:center; min-height:100vh; }）
-- 气泡层底部紧贴螃蟹层顶部
+- 定位: 气泡在螃蟹上方时沉底显示（CSS: body { display:flex; align-items:flex-end; justify-content:center; min-height:100vh; }）；翻转到螃蟹下方时改为置顶显示
+- 上方气泡层底部紧贴螃蟹层顶部；下方气泡的可见内容与螃蟹保持 4dp 间距
 
 ### 3.3 坐标同步
 - 拖拽螃蟹时，气泡层实时跟随
