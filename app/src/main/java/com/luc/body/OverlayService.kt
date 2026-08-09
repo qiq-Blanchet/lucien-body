@@ -134,7 +134,10 @@ class OverlayService : Service() {
             onStuckTap = { eventTimeMs -> handleTap(fromStuck = true, eventTimeMs) },
             onDoubleTap = ::handleDoubleTap,
             onHeartParticles = { controller.showHeartParticles() },
-            onLongPressMenu = { actions -> controller.showMiniMenu(actions) },
+            onLongPressMenu = { actions ->
+                controller.showMiniMenu(actions)
+                coordinator.showLatestEmotionMetrics()
+            },
             menuActions = MiniMenuActions(
                 onPoke = { handleTap(fromStuck = false) },
                 onPetHead = ::handlePetHead,

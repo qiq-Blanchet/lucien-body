@@ -35,32 +35,39 @@ class OverlayController(
 ) : UiSink {
     private var petView: WebView? = null
     private var bubbleView: WebView? = null
+    private var metricsView: EmotionMetricsPanelView? = null
     private var renderer: WebRenderer? = null
     private var petParams: WindowManager.LayoutParams? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
+    private var metricsParams: WindowManager.LayoutParams? = null
     private var placementTracker: OverlayPlacementTracker? = null
     private var componentCallbacks: ComponentCallbacks? = null
     private var popupWindow: PopupWindow? = null
     private var flingScroller: OverScroller? = null
     private var flingRunnable: Runnable? = null
     private var savedPosition = initialPosition
+    private var lastVisibleState: VisibleState? = null
 
     fun show() {
-        if (petView != null || bubbleView != null) return
+        if (petView != null || bubbleView != null || metricsView != null) return
 
         val density = context.resources.displayMetrics.density
         val pet = WebView(context)
         val bubble = WebView(context)
+        val metrics = EmotionMetricsPanelView(context)
         val newRenderer = WebRenderer(pet, bubble)
         val newPetParams = OverlayWindowSpec.pet(petSizeDp).toLayoutParams(density)
         val newBubbleParams = OverlayWindowSpec.bubble().toLayoutParams(density)
+        val newMetricsParams = OverlayWindowSpec.metrics().toLayoutParams(density)
         val tracker = OverlayPlacementTracker(geometry, ::safeBounds)
 
         petView = pet
         bubbleView = bubble
+        metricsView = metrics
         renderer = newRenderer
         petParams = newPetParams
         bubbleParams = newBubbleParams
+        metricsParams = newMetricsParams
         placementTracker = tracker
         applyPlacement(tracker.initialPlacement(savedPosition))
         pet.setOnTouchListener(
@@ -80,16 +87,19 @@ class OverlayController(
             ),
         )
         var bubbleAdded = false
+        var metricsAdded = false
         var petAdded = false
         try {
             windowManager.addView(bubble, newBubbleParams)
             bubbleAdded = true
+            windowManager.addView(metrics, newMetricsParams)
+            metricsAdded = true
             windowManager.addView(pet, newPetParams)
             petAdded = true
             registerConfigurationCallback(pet)
             postReclampAfterInsets(pet)
         } catch (error: RuntimeException) {
-            cleanUpFailedShow(pet, bubble, petAdded, bubbleAdded)
+            cleanUpFailedShow(pet, bubble, metrics, petAdded, bubbleAdded, metricsAdded)
             throw error
         }
     }
@@ -152,17 +162,22 @@ class OverlayController(
     }
 
     override fun render(state: VisibleState) {
-        renderer?.render(state)
+        val previous = lastVisibleState
+        if (!differsOnlyInEmotionMetrics(previous, state)) renderer?.render(state)
+        metricsView?.render(state.emotionMetrics)
+        lastVisibleState = state
     }
 
     fun remove() {
         val pet = petView
         val bubble = bubbleView
-        if (pet == null && bubble == null) return
+        val metrics = metricsView
+        if (pet == null && bubble == null && metrics == null) return
         pet?.setOnTouchListener(null)
         stopFling()
         popupWindow?.dismiss()
         pet?.let(::removeViewIgnoringAlreadyRemoved)
+        metrics?.let(::removeViewIgnoringAlreadyRemoved)
         bubble?.let(::removeViewIgnoringAlreadyRemoved)
         pet?.stopLoading()
         bubble?.stopLoading()
@@ -174,11 +189,14 @@ class OverlayController(
     private fun cleanUpFailedShow(
         pet: WebView,
         bubble: WebView,
+        metrics: EmotionMetricsPanelView,
         petAdded: Boolean,
         bubbleAdded: Boolean,
+        metricsAdded: Boolean,
     ) {
         pet.setOnTouchListener(null)
         if (petAdded) removeViewIgnoringAlreadyRemoved(pet)
+        if (metricsAdded) removeViewIgnoringAlreadyRemoved(metrics)
         if (bubbleAdded) removeViewIgnoringAlreadyRemoved(bubble)
         pet.stopLoading()
         bubble.stopLoading()
@@ -192,24 +210,37 @@ class OverlayController(
         componentCallbacks = null
         petView = null
         bubbleView = null
+        metricsView = null
         renderer = null
         petParams = null
         bubbleParams = null
+        metricsParams = null
         placementTracker = null
         popupWindow = null
+        lastVisibleState = null
     }
 
     private fun applyPlacement(placement: OverlayPlacementPx) {
         val bubble = bubbleView ?: return
         val pet = petView ?: return
+        val metrics = metricsView ?: return
         val currentBubbleParams = bubbleParams ?: return
         val currentPetParams = petParams ?: return
+        val currentMetricsParams = metricsParams ?: return
+        val currentMetricsPlacement = geometry.metricsPlacement(
+            placement.petX,
+            placement.petY,
+            safeBounds(),
+        )
         renderer?.setBubbleBelowPet(placement.bubbleBelowPet)
         currentBubbleParams.x = placement.bubbleX
         currentBubbleParams.y = placement.bubbleY
         currentPetParams.x = placement.petX
         currentPetParams.y = placement.petY
+        currentMetricsParams.x = currentMetricsPlacement.x
+        currentMetricsParams.y = currentMetricsPlacement.y
         if (bubble.isAttachedToWindow) windowManager.updateViewLayout(bubble, currentBubbleParams)
+        if (metrics.isAttachedToWindow) windowManager.updateViewLayout(metrics, currentMetricsParams)
         if (pet.isAttachedToWindow) windowManager.updateViewLayout(pet, currentPetParams)
     }
 
@@ -395,3 +426,8 @@ class OverlayController(
         val ZERO_INSETS = EdgeInsetsPx(0, 0, 0, 0)
     }
 }
+
+internal fun differsOnlyInEmotionMetrics(previous: VisibleState?, current: VisibleState): Boolean =
+    previous != null &&
+        previous.emotionMetrics != current.emotionMetrics &&
+        previous.copy(emotionMetrics = current.emotionMetrics) == current

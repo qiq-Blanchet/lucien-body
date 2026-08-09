@@ -28,6 +28,12 @@ class StateCoordinator(
         val generation: Long,
     )
 
+    private data class ActiveEmotionMetrics(
+        val metrics: EmotionMetrics,
+        val remoteRevision: String?,
+        val generation: Long,
+    )
+
     private val ownerThread = AtomicReference<Thread?>(null)
     private val idleCandidate = Candidate(Expression.IDLE, 0L, "idle")
 
@@ -60,6 +66,12 @@ class StateCoordinator(
     private var bubbleGeneration = 0L
     private var bubbleHideTask: Cancelable? = null
 
+    private var latestEmotionMetrics: EmotionMetrics? = null
+    private var emotionMetricsInitialized = false
+    private var activeEmotionMetrics: ActiveEmotionMetrics? = null
+    private var emotionMetricsGeneration = 0L
+    private var emotionMetricsHideTask: Cancelable? = null
+
     fun onRemoteState(state: RemoteState) {
         requireOwnerThread()
         if (closed) return
@@ -69,8 +81,17 @@ class StateCoordinator(
         if (newest != null && !instant.isAfter(newest)) return
 
         val normalized = state.copy(bubbleText = normalizeBubbleText(state.bubbleText))
+        val incomingMetrics = EmotionMetrics.fromRemote(normalized)
+        val mergedMetrics = incomingMetrics?.let { update ->
+            latestEmotionMetrics?.mergeNonNull(update) ?: update
+        }
+        val changedMetrics = mergedMetrics?.takeIf {
+            emotionMetricsInitialized && it != latestEmotionMetrics
+        }
+        if (mergedMetrics != null) latestEmotionMetrics = mergedMetrics
+        emotionMetricsInitialized = true
         newestIsoRevision = instant
-        applyRemoteState(normalized)
+        applyRemoteState(normalized, changedMetrics)
     }
 
     fun clearRemoteState() {
@@ -80,6 +101,7 @@ class StateCoordinator(
         cancelRemoteExpiry()
         latestRemoteState = null
         clearActiveBubble()
+        clearActiveEmotionMetrics()
         renderCurrent()
     }
 
@@ -263,6 +285,19 @@ class StateCoordinator(
         bubbleBaseSeconds = checkedBubbleBaseDuration(seconds)
     }
 
+    fun showLatestEmotionMetrics() {
+        requireOwnerThread()
+        if (closed) return
+        val metrics = latestEmotionMetrics ?: return
+
+        installEmotionMetrics(
+            metrics = metrics,
+            durationMs = bubbleDurationMs("", bubbleBaseSeconds),
+            remoteRevision = null,
+        )
+        renderCurrent()
+    }
+
     fun currentExpression(): Expression {
         requireOwnerThread()
         return selectedCandidate().expression
@@ -282,19 +317,26 @@ class StateCoordinator(
         cancelTransient()
         cancelRemoteExpiry()
         clearActiveBubble()
+        clearActiveEmotionMetrics()
+        latestEmotionMetrics = null
+        emotionMetricsInitialized = false
         requestedCandidate = null
         contextCandidates.clear()
         dragCandidate = null
     }
 
-    private fun applyRemoteState(state: RemoteState) {
+    private fun applyRemoteState(state: RemoteState, changedMetrics: EmotionMetrics?) {
         cancelLocalReaction()
         cancelRemoteExpiry()
         latestRemoteState = state
         remoteSequence = nextSequence()
         clearActiveBubble()
+        clearActiveEmotionMetrics()
         val text = state.bubbleText
         val durationMs = bubbleDurationMs(text.orEmpty(), bubbleBaseSeconds)
+        if (changedMetrics != null) {
+            installEmotionMetrics(changedMetrics, durationMs, state.updatedAt)
+        }
         if (text == null) {
             renderCurrent()
         } else {
@@ -314,6 +356,25 @@ class StateCoordinator(
             return
         }
         remoteExpiryTask = task
+    }
+
+    private fun installEmotionMetrics(
+        metrics: EmotionMetrics,
+        durationMs: Long,
+        remoteRevision: String?,
+    ) {
+        clearActiveEmotionMetrics()
+        val generation = ++emotionMetricsGeneration
+        val active = ActiveEmotionMetrics(metrics, remoteRevision, generation)
+        activeEmotionMetrics = active
+        val task = scheduler.schedule(durationMs) {
+            onEmotionMetricsExpired(generation)
+        }
+        if (closed || generation != emotionMetricsGeneration || activeEmotionMetrics !== active) {
+            task.cancel()
+            return
+        }
+        emotionMetricsHideTask = task
     }
 
     private fun installBubble(
@@ -368,6 +429,17 @@ class StateCoordinator(
         remoteExpiryGeneration += 1
         latestRemoteState = null
         if (activeBubble?.revision == revision) clearActiveBubble()
+        if (activeEmotionMetrics?.remoteRevision == revision) clearActiveEmotionMetrics()
+        renderCurrent()
+    }
+
+    private fun onEmotionMetricsExpired(generation: Long) {
+        requireOwnerThread()
+        if (closed || generation != emotionMetricsGeneration || activeEmotionMetrics == null) return
+
+        emotionMetricsHideTask = null
+        activeEmotionMetrics = null
+        emotionMetricsGeneration += 1
         renderCurrent()
     }
 
@@ -410,6 +482,15 @@ class StateCoordinator(
         return existed
     }
 
+    private fun clearActiveEmotionMetrics(): Boolean {
+        val existed = activeEmotionMetrics != null
+        emotionMetricsGeneration += 1
+        emotionMetricsHideTask?.cancel()
+        emotionMetricsHideTask = null
+        activeEmotionMetrics = null
+        return existed
+    }
+
     private fun selectedCandidate(): Candidate {
         latestRemoteState?.let { remote ->
             return Candidate(remote.expression, remoteSequence, remote.updatedAt)
@@ -444,6 +525,7 @@ class StateCoordinator(
                 bubbleText = bubble?.text,
                 bubbleStyle = bubble?.style ?: BubbleStyle.NORMAL,
                 revision = bubble?.revision ?: selected.revision,
+                emotionMetrics = activeEmotionMetrics?.metrics,
             ),
         )
     }

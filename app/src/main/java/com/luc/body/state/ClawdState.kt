@@ -75,11 +75,35 @@ data class RemoteState(
     val heat: Int? = null,
 )
 
+data class EmotionMetrics(
+    val valence: Double? = null,
+    val arousal: Double? = null,
+    val heat: Int? = null,
+) {
+    val hasAnyValue: Boolean
+        get() = valence != null || arousal != null || heat != null
+
+    fun mergeNonNull(update: EmotionMetrics): EmotionMetrics = EmotionMetrics(
+        valence = update.valence ?: valence,
+        arousal = update.arousal ?: arousal,
+        heat = update.heat ?: heat,
+    )
+
+    companion object {
+        fun fromRemote(state: RemoteState): EmotionMetrics? = EmotionMetrics(
+            valence = state.valence,
+            arousal = state.arousal,
+            heat = state.heat,
+        ).takeIf(EmotionMetrics::hasAnyValue)
+    }
+}
+
 data class VisibleState(
     val expression: Expression,
     val bubbleText: String?,
     val bubbleStyle: BubbleStyle,
     val revision: String,
+    val emotionMetrics: EmotionMetrics? = null,
 )
 
 enum class ContextSource {

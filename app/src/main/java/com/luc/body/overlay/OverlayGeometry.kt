@@ -22,6 +22,11 @@ data class OverlayPlacementPx(
     val bubbleBelowPet: Boolean,
 )
 
+data class MetricsPlacementPx(
+    val x: Int,
+    val y: Int,
+)
+
 enum class SnapEdge { LEFT, TOP, RIGHT, BOTTOM }
 
 data class SnapResult(
@@ -36,6 +41,10 @@ class OverlayGeometry(
     val petSizePx = dpToPx(petSizeDp, density)
     private val bubbleWidthPx = dpToPx(BUBBLE_WIDTH_DP, density)
     private val bubbleHeightPx = dpToPx(BUBBLE_HEIGHT_DP, density)
+    private val metricsWidthPx = dpToPx(METRICS_WINDOW_WIDTH_DP, density)
+    private val metricsHeightPx = dpToPx(METRICS_WINDOW_HEIGHT_DP, density)
+    private val metricsPanelInsetPx = dpToPx(METRICS_PANEL_INSET_DP, density)
+    private val metricsGapPx = dpToPx(METRICS_GAP_DP, density)
     private val edgeMarginPx = dpToPx(EDGE_MARGIN_DP, density)
     private val snapThresholdPx = SNAP_THRESHOLD_DP * density
     // The source sprites use a 45-unit viewBox with roughly 15 units of side padding.
@@ -66,6 +75,29 @@ class OverlayGeometry(
             petX = petX.coerceIn(minimumPetX, maximumPetX),
             petY = petY.coerceIn(bounds.top, maxCoordinate(bounds.top, bounds.bottom, petSizePx)),
             bounds = bounds,
+        )
+    }
+
+    fun metricsPlacement(petX: Int, petY: Int, bounds: SafeBoundsPx): MetricsPlacementPx {
+        val visibleLeft = petX + petSizePx / 3
+        val visibleRight = petX + petSizePx * 2 / 3
+        val leftX = visibleLeft - metricsGapPx - metricsWidthPx + metricsPanelInsetPx
+        val rightX = visibleRight + metricsGapPx - metricsPanelInsetPx
+        val maximumX = maxCoordinate(bounds.left, bounds.right, metricsWidthPx)
+        val desiredX = when {
+            leftX >= bounds.left -> leftX
+            rightX <= maximumX -> rightX
+            visibleLeft - bounds.left >= bounds.right - visibleRight -> leftX
+            else -> rightX
+        }
+        val desiredY = petY + (petSizePx - metricsHeightPx) / 2
+
+        return MetricsPlacementPx(
+            x = desiredX.coerceIn(bounds.left, maximumX),
+            y = desiredY.coerceIn(
+                bounds.top,
+                maxCoordinate(bounds.top, bounds.bottom, metricsHeightPx),
+            ),
         )
     }
 
@@ -138,6 +170,10 @@ class OverlayGeometry(
         const val DEFAULT_PET_SIZE_DP = 90
         const val BUBBLE_WIDTH_DP = 180
         const val BUBBLE_HEIGHT_DP = 120
+        const val METRICS_WINDOW_WIDTH_DP = 140
+        const val METRICS_WINDOW_HEIGHT_DP = 132
+        const val METRICS_PANEL_INSET_DP = 4
+        const val METRICS_GAP_DP = 20
         const val EDGE_MARGIN_DP = 16
         const val SNAP_THRESHOLD_DP = 15f
     }

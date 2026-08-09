@@ -39,8 +39,23 @@ class OverlayWindowSpecTest {
     }
 
     @Test
+    fun emotionMetricsWindowMatchesTheApprovedPanelAndNeverAcceptsTouches() {
+        val metrics = OverlayWindowSpec.metrics()
+
+        assertEquals(140, metrics.widthDp)
+        assertEquals(132, metrics.heightDp)
+        assertFalse(metrics.touchable)
+        assertEquals(
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            metrics.flags,
+        )
+    }
+
+    @Test
     fun bothWindowsUseTheApprovedOverlayWindowConfiguration() {
-        listOf(OverlayWindowSpec.pet(), OverlayWindowSpec.bubble()).forEach { spec ->
+        listOf(OverlayWindowSpec.pet(), OverlayWindowSpec.bubble(), OverlayWindowSpec.metrics()).forEach { spec ->
             assertEquals(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, spec.type)
             assertEquals(PixelFormat.TRANSLUCENT, spec.pixelFormat)
             assertEquals(Gravity.TOP or Gravity.START, spec.gravity)
@@ -51,5 +66,6 @@ class OverlayWindowSpecTest {
     fun sizesConvertFromDpToExactPixelsForWindowLayout() {
         assertEquals(OverlaySizePx(width = 113, height = 113), OverlayWindowSpec.pet().sizePx(1.25f))
         assertEquals(OverlaySizePx(width = 225, height = 150), OverlayWindowSpec.bubble().sizePx(1.25f))
+        assertEquals(OverlaySizePx(width = 175, height = 165), OverlayWindowSpec.metrics().sizePx(1.25f))
     }
 }
