@@ -38,6 +38,16 @@ class ClawdHtmlSecurityTest {
     }
 
     @Test
+    fun `left edge can mirror the sprite without changing its window size`() {
+        val html = File("src/main/assets/clawd.html").readText()
+        val css = File("src/main/assets/css/clawd.css").readText()
+
+        assertTrue(html.contains("setMirrored(mirrored)"))
+        assertTrue(html.contains("classList.toggle(\"pet-stage--mirrored\", Boolean(mirrored))"))
+        assertTrue(css.contains("#pet-stage.pet-stage--mirrored .pet-frame { transform: scaleX(-1); }"))
+    }
+
+    @Test
     fun `bubble supports sleepy style without a border or tail`() {
         val html = File("src/main/assets/bubble.html").readText()
         val css = File("src/main/assets/css/bubble.css").readText()

@@ -29,6 +29,8 @@ class WebRenderer(
     }.build()
     private val playbackGate = SpritePlaybackGate(spriteCatalog)
     private var renderedSprite: Pair<String, String>? = null
+    private var petPageReady = false
+    private var petMirrored = false
     private val bubblePlacementGate = BubblePlacementGate { belowPet ->
         bubbleWebView.evaluateJavascript(
             JavascriptCommandBuilder.setBubbleBelowPet(belowPet),
@@ -38,7 +40,14 @@ class WebRenderer(
     private val renderGate = WebRenderGate(::renderReadyState)
 
     init {
-        configure(petWebView, CLAWD_URL, renderGate::onPetPageFinished)
+        configure(petWebView, CLAWD_URL) {
+            petPageReady = true
+            petWebView.evaluateJavascript(
+                JavascriptCommandBuilder.setPetMirrored(petMirrored),
+                null,
+            )
+            renderGate.onPetPageFinished()
+        }
         configure(bubbleWebView, BUBBLE_URL) {
             bubblePlacementGate.onPageFinished()
             renderGate.onBubblePageFinished()
@@ -57,6 +66,16 @@ class WebRenderer(
 
     fun setBubbleBelowPet(belowPet: Boolean) {
         bubblePlacementGate.setBelowPet(belowPet)
+    }
+
+    fun setPetMirrored(mirrored: Boolean) {
+        if (petMirrored == mirrored) return
+        petMirrored = mirrored
+        if (!petPageReady) return
+        petWebView.evaluateJavascript(
+            JavascriptCommandBuilder.setPetMirrored(mirrored),
+            null,
+        )
     }
 
     private fun renderReadyState(state: VisibleState) {

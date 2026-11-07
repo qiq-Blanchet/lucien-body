@@ -71,4 +71,16 @@ class JavascriptCommandBuilderTest {
             JavascriptCommandBuilder.setBubbleBelowPet(false),
         )
     }
+
+    @Test
+    fun petMirrorUsesABooleanLiteral() {
+        assertEquals(
+            "window.LucPet.setMirrored(true)",
+            JavascriptCommandBuilder.setPetMirrored(true),
+        )
+        assertEquals(
+            "window.LucPet.setMirrored(false)",
+            JavascriptCommandBuilder.setPetMirrored(false),
+        )
+    }
 }

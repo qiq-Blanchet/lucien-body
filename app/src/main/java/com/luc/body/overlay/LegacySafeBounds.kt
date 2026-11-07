@@ -22,10 +22,18 @@ object LegacySafeBounds {
         height: Int,
         systemInsets: EdgeInsetsPx,
         cutoutInsets: EdgeInsetsPx,
-    ): SafeBoundsPx = SafeBoundsPx(
-        left = max(systemInsets.left, cutoutInsets.left),
-        top = max(systemInsets.top, cutoutInsets.top),
-        right = width - max(systemInsets.right, cutoutInsets.right),
-        bottom = height - max(systemInsets.bottom, cutoutInsets.bottom),
+    ): SafeBoundsPx = OverlayMovementBounds.fromDisplay(
+        displayBounds = SafeBoundsPx(0, 0, width, height),
+        insets = systemInsets.maxPerEdge(cutoutInsets),
     )
+}
+
+object OverlayMovementBounds {
+    fun fromDisplay(displayBounds: SafeBoundsPx, insets: EdgeInsetsPx): SafeBoundsPx =
+        SafeBoundsPx(
+            left = displayBounds.left,
+            top = displayBounds.top,
+            right = displayBounds.right,
+            bottom = (displayBounds.bottom - insets.bottom).coerceAtLeast(displayBounds.top),
+        )
 }

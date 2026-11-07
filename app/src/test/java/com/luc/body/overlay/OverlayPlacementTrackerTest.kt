@@ -57,6 +57,7 @@ class OverlayPlacementTrackerTest {
         assertEquals(SnapEdge.LEFT, snapped.edge)
         assertEquals(-30, snapped.placement.petX)
         assertEquals(true, tracker.isStuck)
+        assertEquals(SnapEdge.LEFT, tracker.stuckEdge)
     }
 
     @Test
@@ -69,6 +70,7 @@ class OverlayPlacementTrackerTest {
 
         assertEquals(null, result.edge)
         assertEquals(false, tracker.isStuck)
+        assertEquals(null, tracker.stuckEdge)
     }
 
     @Test
@@ -107,5 +109,18 @@ class OverlayPlacementTrackerTest {
         tracker.finishDrag()
 
         assertEquals(-20, tracker.moveBy(10f, 0f).petX)
+    }
+
+    @Test
+    fun `top and bottom releases remain free`() {
+        val topTracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
+        topTracker.initialPlacement(500 to 0)
+        val bottomTracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
+        bottomTracker.initialPlacement(500 to 910)
+
+        assertEquals(null, topTracker.finishDrag().edge)
+        assertEquals(false, topTracker.isStuck)
+        assertEquals(null, bottomTracker.finishDrag().edge)
+        assertEquals(false, bottomTracker.isStuck)
     }
 }

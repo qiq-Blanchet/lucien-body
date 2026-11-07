@@ -60,6 +60,9 @@
           setSprite(`clawd_sprites/${name}.svg`, name);
         },
         setSprite,
+        setMirrored(mirrored) {
+          document.getElementById("pet-stage").classList.toggle("pet-stage--mirrored", Boolean(mirrored));
+        },
         heart() {
           const heart = document.createElement("span");
           heart.className = "heart-particle";

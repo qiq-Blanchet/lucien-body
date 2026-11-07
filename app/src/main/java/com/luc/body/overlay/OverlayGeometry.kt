@@ -27,7 +27,7 @@ data class MetricsPlacementPx(
     val y: Int,
 )
 
-enum class SnapEdge { LEFT, TOP, RIGHT, BOTTOM }
+enum class SnapEdge { LEFT, RIGHT }
 
 data class SnapResult(
     val placement: OverlayPlacementPx,
@@ -128,18 +128,15 @@ class OverlayGeometry(
     }
 
     /**
-     * Snap detection uses the window edge. The snapped window then overhangs
+     * Only the vertical screen sides are sticky. The snapped window overhangs
      * horizontally by the SVG canvas padding so the visible crab reaches the edge.
      */
     fun snapPet(petX: Int, petY: Int, bounds: SafeBoundsPx): SnapResult {
         val placement = movePet(petX, petY, bounds)
         val maxPetX = maxCoordinate(bounds.left, bounds.right, petSizePx)
-        val maxPetY = maxCoordinate(bounds.top, bounds.bottom, petSizePx)
         val edge = listOf(
             SnapEdge.LEFT to abs(placement.petX - bounds.left).toFloat(),
-            SnapEdge.TOP to abs(placement.petY - bounds.top).toFloat(),
             SnapEdge.RIGHT to abs(maxPetX - placement.petX).toFloat(),
-            SnapEdge.BOTTOM to abs(maxPetY - placement.petY).toFloat(),
         ).minByOrNull { it.second }
             ?.takeIf { it.second <= snapThresholdPx }
             ?.first
@@ -149,13 +146,11 @@ class OverlayGeometry(
                 placement.petY,
                 bounds,
             )
-            SnapEdge.TOP -> movePet(placement.petX, bounds.top, bounds)
             SnapEdge.RIGHT -> placePet(
                 maxPetX + horizontalSnapOverhangPx,
                 placement.petY,
                 bounds,
             )
-            SnapEdge.BOTTOM -> movePet(placement.petX, maxPetY, bounds)
             null -> placement
         }
         return SnapResult(snapped, edge)

@@ -233,6 +233,7 @@ class OverlayController(
             safeBounds(),
         )
         renderer?.setBubbleBelowPet(placement.bubbleBelowPet)
+        renderer?.setPetMirrored(placementTracker?.stuckEdge == SnapEdge.LEFT)
         currentBubbleParams.x = placement.bubbleX
         currentBubbleParams.y = placement.bubbleY
         currentPetParams.x = placement.petX
@@ -335,11 +336,14 @@ class OverlayController(
                     bottom = gestureInsets.bottom,
                 ),
             )
-            return SafeBoundsPx(
-                left = metrics.bounds.left + insets.left,
-                top = metrics.bounds.top + insets.top,
-                right = metrics.bounds.right - insets.right,
-                bottom = metrics.bounds.bottom - insets.bottom,
+            return OverlayMovementBounds.fromDisplay(
+                displayBounds = SafeBoundsPx(
+                    left = metrics.bounds.left,
+                    top = metrics.bounds.top,
+                    right = metrics.bounds.right,
+                    bottom = metrics.bounds.bottom,
+                ),
+                insets = insets,
             )
         }
         @Suppress("DEPRECATION")

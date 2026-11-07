@@ -23,4 +23,7 @@ object JavascriptCommandBuilder {
 
     fun setBubbleBelowPet(belowPet: Boolean): String =
         "window.LucBubble.setPlacement($belowPet)"
+
+    fun setPetMirrored(mirrored: Boolean): String =
+        "window.LucPet.setMirrored($mirrored)"
 }

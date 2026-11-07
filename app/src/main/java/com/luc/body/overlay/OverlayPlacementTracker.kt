@@ -8,15 +8,20 @@ class OverlayPlacementTracker(
 ) {
     private var authoritativePetX: Float? = null
     private var authoritativePetY: Float? = null
-    var isStuck: Boolean = false
+    var stuckEdge: SnapEdge? = null
         private set
+    val isStuck: Boolean
+        get() = stuckEdge != null
     var currentPlacement: OverlayPlacementPx? = null
         private set
 
-    fun initialPlacement(savedPosition: Pair<Int, Int>? = null): OverlayPlacementPx = update(
-        savedPosition?.let { (x, y) -> geometry.movePet(x, y, boundsProvider()) }
-            ?: geometry.initialPlacement(boundsProvider()),
-    )
+    fun initialPlacement(savedPosition: Pair<Int, Int>? = null): OverlayPlacementPx {
+        stuckEdge = null
+        return update(
+            savedPosition?.let { (x, y) -> geometry.movePet(x, y, boundsProvider()) }
+                ?: geometry.initialPlacement(boundsProvider()),
+        )
+    }
 
     fun moveBy(deltaX: Float, deltaY: Float): OverlayPlacementPx {
         val requestedPetX = checkNotNull(authoritativePetX) { "initial placement is required" } + deltaX
@@ -72,7 +77,7 @@ class OverlayPlacementTracker(
         } else {
             SnapResult(geometry.movePet(petX, petY, boundsProvider()), edge = null)
         }
-        isStuck = result.edge != null
+        stuckEdge = result.edge
         update(result.placement)
         return result
     }
