@@ -270,7 +270,7 @@ class OverlayController(
                 fling.velocityY.toInt(),
                 bounds.left,
                 maxX,
-                bounds.top,
+                geometry.minimumPetY(bounds),
                 maxY,
                 overfling,
                 overfling,
@@ -415,6 +415,12 @@ class OverlayController(
         val size = sizePx(density)
         return WindowManager.LayoutParams(size.width, size.height, type, flags, pixelFormat).apply {
             gravity = this@toLayoutParams.gravity
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                flags and WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS != 0
+            ) {
+                setFitInsetsTypes(0)
+            }
         }
     }
 

@@ -50,11 +50,24 @@ class OverlayGeometryTest {
     }
 
     @Test
+    fun topMovementCanOverhangByTheSvgCanvasPadding() {
+        val geometry = OverlayGeometry(density = 1f)
+        val bounds = SafeBoundsPx(0, 0, 1_000, 1_000)
+
+        val placement = geometry.movePet(500, -100, bounds)
+
+        assertEquals(-60, geometry.minimumPetY(bounds))
+        assertEquals(-60, placement.petY)
+        assertEquals(30, placement.bubbleY)
+        assertTrue(placement.bubbleBelowPet)
+    }
+
+    @Test
     fun bubbleInBoundsTooSmallAboveAndBelowClampsToTheTopMostSafeCoordinate() {
         val placement = geometry.movePet(0, 0, SafeBoundsPx(100, 200, 200, 250))
 
         assertEquals(100, placement.petX)
-        assertEquals(200, placement.petY)
+        assertEquals(80, placement.petY)
         assertEquals(100, placement.bubbleX)
         assertEquals(200, placement.bubbleY)
         assertTrue(placement.bubbleBelowPet)

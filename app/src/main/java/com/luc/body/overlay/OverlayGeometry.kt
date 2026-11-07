@@ -49,6 +49,8 @@ class OverlayGeometry(
     private val snapThresholdPx = SNAP_THRESHOLD_DP * density
     // The source sprites use a 45-unit viewBox with roughly 15 units of side padding.
     private val horizontalSnapOverhangPx = petSizePx / 3
+    // Visible bodies start around 30 units down in the same 45-unit source viewBox.
+    private val topMovementOverhangPx = petSizePx * 2 / 3
 
     init {
         require(density > 0f) { "density must be positive" }
@@ -62,7 +64,7 @@ class OverlayGeometry(
 
     fun movePet(petX: Int, petY: Int, bounds: SafeBoundsPx): OverlayPlacementPx {
         val clampedPetX = petX.coerceIn(bounds.left, maxCoordinate(bounds.left, bounds.right, petSizePx))
-        val clampedPetY = petY.coerceIn(bounds.top, maxCoordinate(bounds.top, bounds.bottom, petSizePx))
+        val clampedPetY = petY.coerceIn(minimumPetY(bounds), maxCoordinate(bounds.top, bounds.bottom, petSizePx))
 
         return placePet(clampedPetX, clampedPetY, bounds)
     }
@@ -73,10 +75,12 @@ class OverlayGeometry(
             maxCoordinate(bounds.left, bounds.right, petSizePx) + horizontalSnapOverhangPx
         return placePet(
             petX = petX.coerceIn(minimumPetX, maximumPetX),
-            petY = petY.coerceIn(bounds.top, maxCoordinate(bounds.top, bounds.bottom, petSizePx)),
+            petY = petY.coerceIn(minimumPetY(bounds), maxCoordinate(bounds.top, bounds.bottom, petSizePx)),
             bounds = bounds,
         )
     }
+
+    fun minimumPetY(bounds: SafeBoundsPx): Int = bounds.top - topMovementOverhangPx
 
     fun metricsPlacement(petX: Int, petY: Int, bounds: SafeBoundsPx): MetricsPlacementPx {
         val visibleLeft = petX + petSizePx / 3
