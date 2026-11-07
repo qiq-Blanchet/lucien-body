@@ -1,5 +1,5 @@
 const SERVER_NAME = "luc-mcp";
-const SERVER_VERSION = "1.0.0";
+const SERVER_VERSION = "1.1.0";
 const DEFAULT_PROTOCOL_VERSION = "2025-06-18";
 const SUPPORTED_PROTOCOL_VERSIONS = new Set([
   "2025-11-25",
@@ -83,9 +83,9 @@ const CORS_HEADERS = {
 
 const TOOLS = [
   {
-    name: "luc_set_expression",
+    name: "luc_update",
     description:
-      "切换 Luc 小螃蟹的表情，并可同时更新情绪数值。可用表情：idle（待机）、happy（开心）、angry（生气）、sleepy（困倦）、thinking（思考）、talking（说话）、love（喜爱）、smug（得意）、shocked（震惊）、confused（困惑）、shy（害羞）、proud（骄傲）、sulky（闹别扭）、lonely_1/2/3（不同孤独动作）、waving（挥手）、peeking（偷看）、morning（早晨）、night（夜晚）、eating（吃东西）、dancing（跳舞）、dizzy（眩晕）、clingy（黏人）、grabbed（被抓住）、stuck（侧边吸附）、stuck_tap（吸附时被点）、stuck_grab（从侧边抓起）。本工具会清掉上一条旧气泡，避免旧文字被重新播放。",
+      "一次更新 Luc 小螃蟹的表情、气泡文字、气泡样式和三个情绪数值，至少传一项。所有传入字段在同一笔状态更新中生效。可用表情：idle（待机）、happy（开心）、angry（生气）、sleepy（困倦）、thinking（思考）、talking（说话）、love（喜爱）、smug（得意）、shocked（震惊）、confused（困惑）、shy（害羞）、proud（骄傲）、sulky（闹别扭）、lonely_1/2/3（不同孤独动作）、waving（挥手）、peeking（偷看）、morning（早晨）、night（夜晚）、eating（吃东西）、dancing（跳舞）、dizzy（眩晕）、clingy（黏人）、grabbed（被抓住）、stuck（侧边吸附）、stuck_tap（吸附时被点）、stuck_grab（从侧边抓起）。未传的表情和情绪数值保持当前值；未传 bubble_text 时清掉旧气泡，防止上一句话被重新播放。",
     inputSchema: {
       type: "object",
       properties: {
@@ -93,6 +93,17 @@ const TOOLS = [
           type: "string",
           enum: EXPRESSIONS,
           description: "要显示的表情动作。",
+        },
+        bubble_text: {
+          type: "string",
+          maxLength: 500,
+          description: "气泡文字，最多 500 个字符；传空字符串可清除气泡。",
+        },
+        bubble_style: {
+          type: "string",
+          enum: BUBBLE_STYLES,
+          description:
+            "气泡样式：normal（普通）、whisper（轻声）、shout（大声）、love（爱心）、sleepy（困倦）。提供文字但不传时默认 normal。",
         },
         valence: {
           type: "number",
@@ -113,47 +124,11 @@ const TOOLS = [
           description: "亲密/热情程度 0–10；不传则保留当前值。",
         },
       },
-      required: ["expression"],
+      minProperties: 1,
       additionalProperties: false,
     },
     annotations: {
-      title: "切换 Luc 表情",
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: false,
-      openWorldHint: false,
-    },
-  },
-  {
-    name: "luc_say",
-    description:
-      "让小玑通过 Luc 桌宠气泡说话。文字必填；可选表情会与文字在同一次更新中出现，优先于本地动作。气泡样式：normal（普通）、whisper（轻声）、shout（大声）、love（爱心）、sleepy（困倦）。不传 expression 时保持当前表情。",
-    inputSchema: {
-      type: "object",
-      properties: {
-        text: {
-          type: "string",
-          minLength: 1,
-          maxLength: 500,
-          description: "气泡文字，去除首尾空白后须为 1–500 个字符。",
-        },
-        expression: {
-          type: "string",
-          enum: EXPRESSIONS,
-          description: "说话时同步显示的可选表情；不传则保持当前表情。",
-        },
-        bubble_style: {
-          type: "string",
-          enum: BUBBLE_STYLES,
-          default: "normal",
-          description: "气泡样式，默认 normal。",
-        },
-      },
-      required: ["text"],
-      additionalProperties: false,
-    },
-    annotations: {
-      title: "让 Luc 说话",
+      title: "更新 Luc 状态",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
@@ -426,41 +401,50 @@ function toolError(error: unknown) {
   };
 }
 
-async function callSetExpression(key: string, rawArgs: unknown) {
+async function callUpdate(key: string, rawArgs: unknown) {
   const args = asObject(rawArgs);
-  assertNoUnknownKeys(args, ["expression", "valence", "arousal", "heat"]);
-  const expression = enumValue(args, "expression", EXPRESSIONS, true)!;
+  assertNoUnknownKeys(args, [
+    "expression",
+    "bubble_text",
+    "bubble_style",
+    "valence",
+    "arousal",
+    "heat",
+  ]);
+  if (Object.keys(args).length === 0) {
+    throw new ToolInputError("luc_update 至少需要一个参数");
+  }
+
+  const expression = enumValue(args, "expression", EXPRESSIONS);
+  const bubbleStyle = enumValue(args, "bubble_style", BUBBLE_STYLES);
   const valence = rangedNumber(args, "valence", 0, 1);
   const arousal = rangedNumber(args, "arousal", 0, 1);
   const heat = rangedNumber(args, "heat", 0, 10, true);
 
-  const patch: JsonObject = {
-    expression,
-    bubble_text: null,
-    bubble_style: "normal",
-  };
+  const hasBubbleText = Object.hasOwn(args, "bubble_text");
+  if (!hasBubbleText && bubbleStyle !== undefined) {
+    throw new ToolInputError("bubble_style 需要和 bubble_text 一起传入");
+  }
+
+  const patch: JsonObject = {};
+  if (expression !== undefined) patch.expression = expression;
+  if (hasBubbleText) {
+    if (typeof args.bubble_text !== "string") {
+      throw new ToolInputError("bubble_text 必须是字符串");
+    }
+    const text = args.bubble_text.trim();
+    if (text.length > 500) {
+      throw new ToolInputError("bubble_text 去除首尾空白后最多 500 个字符");
+    }
+    patch.bubble_text = text || null;
+    patch.bubble_style = text ? bubbleStyle ?? "normal" : "normal";
+  } else {
+    patch.bubble_text = null;
+    patch.bubble_style = "normal";
+  }
   if (valence !== undefined) patch.valence = valence;
   if (arousal !== undefined) patch.arousal = arousal;
   if (heat !== undefined) patch.heat = heat;
-
-  const state = await updateState(key, patch);
-  return toolResult({ ok: true, state: publicState(state) });
-}
-
-async function callSay(key: string, rawArgs: unknown) {
-  const args = asObject(rawArgs);
-  assertNoUnknownKeys(args, ["text", "expression", "bubble_style"]);
-  if (typeof args.text !== "string") {
-    throw new ToolInputError("text 必须是字符串");
-  }
-  const text = args.text.trim();
-  if (text.length === 0 || text.length > 500) {
-    throw new ToolInputError("text 去除首尾空白后长度必须为 1–500 个字符");
-  }
-  const expression = enumValue(args, "expression", EXPRESSIONS);
-  const bubbleStyle = enumValue(args, "bubble_style", BUBBLE_STYLES) ?? "normal";
-  const patch: JsonObject = { bubble_text: text, bubble_style: bubbleStyle };
-  if (expression !== undefined) patch.expression = expression;
 
   const state = await updateState(key, patch);
   return toolResult({ ok: true, state: publicState(state) });
@@ -513,10 +497,8 @@ async function callTool(key: string, params: unknown) {
 
   try {
     switch (object.name) {
-      case "luc_set_expression":
-        return await callSetExpression(key, object.arguments);
-      case "luc_say":
-        return await callSay(key, object.arguments);
+      case "luc_update":
+        return await callUpdate(key, object.arguments);
       case "luc_get_status":
         return await callGetStatus(key, object.arguments);
       case "luc_get_events":
@@ -549,7 +531,7 @@ async function handleRpc(key: string, request: JsonRpcRequest) {
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
         instructions:
-          "用 luc_set_expression 控制表情和情绪值，用 luc_say 说话，用 luc_get_status 读取状态，用 luc_get_events 读取互动。写入工具优先于桌宠本地动作。",
+          "用 luc_update 在同一次调用中更新表情、气泡和情绪值，用 luc_get_status 读取状态，用 luc_get_events 读取互动。远端写入优先于桌宠本地动作。",
       });
     }
     case "ping":

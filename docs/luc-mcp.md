@@ -31,22 +31,29 @@ https://rpfbehtavkxojipzbroi.supabase.co/functions/v1/luc-mcp
 
 ## 工具
 
-### `luc_set_expression`
+### `luc_update`
 
-切换表情，并可一起更新情绪值。`expression` 必填；不传的情绪值保持原值。调用时会清掉旧气泡，避免上一条文字被再次播放。
+在一次调用中更新表情、气泡文字、气泡样式和三个情绪数值，至少传一项。所有传入内容会在同一笔状态更新中生效；未传的表情和情绪值保持原值。没有提供新文字时会清掉旧气泡，避免上一句话被再次播放。
 
 - `expression`: `idle/happy/angry/sleepy/thinking/talking/love/smug/shocked/confused/shy/proud/sulky/lonely_1/lonely_2/lonely_3/waving/peeking/morning/night/eating/dancing/dizzy/clingy/grabbed/stuck/stuck_tap/stuck_grab`
+- `bubble_text`: 最多 500 个字符；空字符串用于清除气泡
+- `bubble_style`: `normal/whisper/shout/love/sleepy`；有文字但不传时默认 `normal`
 - `valence`: 0–1，0 更消极，1 更积极
 - `arousal`: 0–1，0 更平静，1 更激动
 - `heat`: 0–10 的整数，表示亲密/热情程度
 
-### `luc_say`
+一次完整更新示例：
 
-让桌宠显示文字气泡。`text` 必填；`expression` 可选，传入时与文字在同一次更新中出现；不传则保持当前表情。
-
-- `text`: 1–500 个字符
-- `expression`: 与 `luc_set_expression` 相同的可选表情
-- `bubble_style`: `normal/whisper/shout/love/sleepy`，默认 `normal`
+```json
+{
+  "expression": "shy",
+  "bubble_text": "看到你啦。",
+  "bubble_style": "love",
+  "valence": 0.82,
+  "arousal": 0.58,
+  "heat": 8
+}
+```
 
 ### `luc_get_status`
 

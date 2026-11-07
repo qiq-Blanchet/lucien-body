@@ -57,7 +57,7 @@ $env:SUPABASE_PUBLISHABLE_KEY = 'YOUR_SUPABASE_PUBLISHABLE_KEY'
 
 客户端对每个 Supabase REST 请求同时发送两项 header：`apikey: <publishable key>` 与 `Authorization: Bearer <publishable key>`。publishable key 会进入 APK，不能作为秘密；数据安全依赖数据库角色权限和 RLS。当前三张业务表已经按最小职责收紧：状态表仅允许读取与指定状态列更新，事件表允许桌宠写入并允许读取/清理，配置表只读。
 
-仓库同时包含一个远程 Streamable HTTP MCP，可用四个工具控制或读取 Luc：`luc_set_expression`、`luc_say`、`luc_get_status` 与 `luc_get_events`。连接 URL、参数范围和安全配置见 [Luc MCP 文档](docs/luc-mcp.md)。
+仓库同时包含一个远程 Streamable HTTP MCP，可用三个工具控制或读取 Luc：`luc_update`、`luc_get_status` 与 `luc_get_events`。`luc_update` 可在同一次调用中提交表情、气泡文字、气泡样式和三个情绪数值；连接 URL、参数范围和安全配置见 [Luc MCP 文档](docs/luc-mcp.md)。
 
 ## GitHub Actions 签名发布
 
