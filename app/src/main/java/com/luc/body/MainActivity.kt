@@ -45,6 +45,30 @@ class MainActivity : ComponentActivity() {
 
         bindSettings()
 
+        val settingsOverlay = findViewById<View>(R.id.settings_overlay)
+        findViewById<Button>(R.id.open_settings_ui_button).setOnClickListener {
+            settingsOverlay.visibility = View.VISIBLE
+        }
+        findViewById<Button>(R.id.close_settings_ui_button).setOnClickListener {
+            settingsOverlay.visibility = View.GONE
+        }
+        settingsOverlay.setOnClickListener { settingsOverlay.visibility = View.GONE }
+        findViewById<View>(R.id.settings_sheet).setOnClickListener {
+            // Consume taps inside the sheet without dismissing the overlay.
+        }
+        findViewById<Button>(R.id.open_app_details_settings_button).setOnClickListener {
+            openAppDetailsSettings()
+        }
+        findViewById<Button>(R.id.permission_help_button).setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.restricted_settings_title)
+                .setMessage(R.string.restricted_settings_reason)
+                .setPositiveButton(R.string.restricted_settings_done, null)
+                .show()
+        }
+        findViewById<View>(R.id.restricted_settings_banner).visibility =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) View.VISIBLE else View.GONE
+
         findViewById<Button>(R.id.start_button).setOnClickListener { startFromVisibleClick() }
         findViewById<Button>(R.id.app_details_button).apply {
             visibility = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) View.VISIBLE else View.GONE
@@ -67,7 +91,7 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, R.string.position_reset, Toast.LENGTH_SHORT).show()
         }
 
-        findViewById<android.view.View>(android.R.id.content).post { showNextPermissionGuide() }
+        // Permission guidance is inline; dialogs appear only for explicit actions.
     }
 
     override fun onResume() {
@@ -75,7 +99,6 @@ class MainActivity : ComponentActivity() {
         updatePermissionStatus()
         if (returningFromPermissionSettings) {
             returningFromPermissionSettings = false
-            findViewById<android.view.View>(android.R.id.content).post { showNextPermissionGuide() }
         }
     }
 
@@ -125,12 +148,16 @@ class MainActivity : ComponentActivity() {
         val usage = hasUsageAccess()
         val notification = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        val overlayText = getString(if (overlay) R.string.permission_granted else R.string.permission_required)
+        val batteryText = getString(if (battery) R.string.permission_granted else R.string.permission_optional)
+        val usageText = getString(if (usage) R.string.permission_granted else R.string.permission_optional)
+        val notificationText = getString(if (notification) R.string.permission_granted else R.string.permission_optional)
+        findViewById<TextView>(R.id.status_overlay).text = overlayText
+        findViewById<TextView>(R.id.status_battery).text = batteryText
+        findViewById<TextView>(R.id.status_usage).text = usageText
+        findViewById<TextView>(R.id.status_notification).text = notificationText
         findViewById<TextView>(R.id.permission_status).text = getString(
-            R.string.permission_status,
-            getString(if (overlay) R.string.permission_granted else R.string.permission_required),
-            getString(if (battery) R.string.permission_granted else R.string.permission_optional),
-            getString(if (usage) R.string.permission_granted else R.string.permission_optional),
-            getString(if (notification) R.string.permission_granted else R.string.permission_optional),
+            R.string.permission_status, overlayText, batteryText, usageText, notificationText,
         )
     }
 
