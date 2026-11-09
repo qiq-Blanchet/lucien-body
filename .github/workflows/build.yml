@@ -117,6 +117,15 @@ jobs:
         if: github.event_name == 'pull_request'
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
 
+      - name: Upload preview Debug APK for pull requests
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Luc-Moonlit-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
       - uses: actions/upload-artifact@v4
         if: github.event_name != 'pull_request'
         with:
