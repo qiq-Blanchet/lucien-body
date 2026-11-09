@@ -50,7 +50,7 @@ class OverlayPlacementTrackerTest {
     fun `drag end snaps and reports stuck only within edge threshold`() {
         val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
         tracker.initialPlacement()
-        tracker.moveBy(-879f, -400f)
+        tracker.moveBy(-890f, -400f)
 
         val snapped = tracker.finishDrag()
 
@@ -77,7 +77,7 @@ class OverlayPlacementTrackerTest {
     fun `fling release already within threshold snaps immediately`() {
         val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
         tracker.initialPlacement()
-        tracker.moveBy(-879f, -400f)
+        tracker.moveBy(-890f, -400f)
 
         val result = tracker.finishDrag(allowSnap = true)
 
@@ -105,7 +105,7 @@ class OverlayPlacementTrackerTest {
     fun `dragging a snapped pet inward does not jump across its transparent margin`() {
         val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
         tracker.initialPlacement()
-        tracker.moveBy(-879f, -400f)
+        tracker.moveBy(-890f, -400f)
         tracker.finishDrag()
 
         assertEquals(-20, tracker.moveBy(10f, 0f).petX)

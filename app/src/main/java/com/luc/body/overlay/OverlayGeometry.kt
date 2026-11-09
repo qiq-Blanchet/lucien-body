@@ -174,6 +174,6 @@ class OverlayGeometry(
         const val METRICS_PANEL_INSET_DP = 4
         const val METRICS_GAP_DP = 20
         const val EDGE_MARGIN_DP = 16
-        const val SNAP_THRESHOLD_DP = 15f
+        const val SNAP_THRESHOLD_DP = 4f
     }
 }
