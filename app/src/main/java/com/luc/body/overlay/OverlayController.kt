@@ -5,6 +5,7 @@ import android.content.ComponentCallbacks
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
 import android.graphics.Point
 import android.os.Build
 import android.view.Gravity
@@ -13,7 +14,7 @@ import android.view.ViewConfiguration
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.webkit.WebView
-import android.widget.Button
+import android.widget.TextView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.OverScroller
@@ -123,36 +124,69 @@ class OverlayController(
         val anchor = petView ?: return
         popupWindow?.dismiss()
         val density = context.resources.displayMetrics.density
+        fun dp(value: Int): Int = (value * density).toInt()
+        val widthPx = dp(112)
+        val heightPx = dp(188)
+        val frame = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(Color.parseColor("#FFFAFC"), Color.parseColor("#FFEBF3")),
+        ).apply {
+            cornerRadius = dp(19).toFloat()
+            setStroke(dp(1), Color.parseColor("#FFF0F5"))
+        }
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding((8 * density).toInt(), (6 * density).toInt(), (8 * density).toInt(), (6 * density).toInt())
-            setBackgroundColor(Color.WHITE)
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            background = frame
         }
-        listOf(
+        val actionsWithLabels = listOf(
             "戳一下" to actions.onPoke,
             "摸摸头" to actions.onPetHead,
             "隐藏" to actions.onHide,
             "设置" to actions.onSettings,
-        ).forEach { (label, action) ->
-            content.addView(Button(context).apply {
+        )
+        actionsWithLabels.forEachIndexed { index, (label, action) ->
+            val fill = GradientDrawable().apply {
+                setColor(Color.argb(59, 247, 184, 202))
+                cornerRadius = dp(9).toFloat()
+            }
+            val item = TextView(context).apply {
                 text = label
-                isAllCaps = false
+                textSize = 13f
+                setTextColor(Color.parseColor("#994A65"))
+                gravity = Gravity.CENTER
+                background = fill
+                isClickable = true
+                isFocusable = true
                 setOnClickListener {
                     popupWindow?.dismiss()
                     action()
                 }
-            })
+            }
+            content.addView(
+                item,
+                LinearLayout.LayoutParams(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    dp(36),
+                ).apply {
+                    if (index > 0) topMargin = dp(8)
+                },
+            )
         }
-        popupWindow = PopupWindow(
-            content,
-            (132 * density).toInt(),
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            true,
-        ).apply {
+        val placement = petParams ?: return
+        val position = geometry.miniMenuPlacement(
+            petX = placement.x,
+            petY = placement.y,
+            menuWidthPx = widthPx,
+            menuHeightPx = heightPx,
+            bounds = safeBounds(),
+        )
+        popupWindow = PopupWindow(content, widthPx, heightPx, true).apply {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            elevation = dp(7).toFloat()
             isOutsideTouchable = true
             setOnDismissListener { if (popupWindow === this) popupWindow = null }
-            showAsDropDown(anchor, 0, -(petSizeDp * density).toInt(), Gravity.CENTER_HORIZONTAL)
+            showAtLocation(anchor, Gravity.TOP or Gravity.START, position.x, position.y)
         }
     }
 
