@@ -3,6 +3,6 @@
         <item name="android:colorAccent">@color/luc_accent</item>
         <item name="android:navigationBarColor">@color/luc_background</item>
         <item name="android:statusBarColor">@color/luc_background</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>
