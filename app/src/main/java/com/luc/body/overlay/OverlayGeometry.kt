@@ -27,6 +27,12 @@ data class MetricsPlacementPx(
     val y: Int,
 )
 
+data class MiniMenuPlacementPx(
+    val x: Int,
+    val y: Int,
+    val abovePet: Boolean,
+)
+
 enum class SnapEdge { LEFT, RIGHT }
 
 data class SnapResult(
@@ -102,6 +108,34 @@ class OverlayGeometry(
                 bounds.top,
                 maxCoordinate(bounds.top, bounds.bottom, metricsHeightPx),
             ),
+        )
+    }
+
+    /**
+     * The crab occupies only the lower part of its transparent SVG WebView.
+     * Below: the menu starts just beneath the visible feet.
+     * Above: the menu ends roughly 16dp before the visible head at 90dp size.
+     */
+    fun miniMenuPlacement(
+        petX: Int,
+        petY: Int,
+        menuWidthPx: Int,
+        menuHeightPx: Int,
+        bounds: SafeBoundsPx,
+    ): MiniMenuPlacementPx {
+        require(menuWidthPx > 0 && menuHeightPx > 0)
+        val centeredX = petX + (petSizePx - menuWidthPx) / 2
+        val desiredBelowY = petY + petSizePx * 4 / 5
+        val abovePet = desiredBelowY + menuHeightPx > bounds.bottom
+        val desiredY = if (abovePet) {
+            petY + (petSizePx * 37 / 90) - menuHeightPx
+        } else {
+            desiredBelowY
+        }
+        return MiniMenuPlacementPx(
+            x = centeredX.coerceIn(bounds.left, maxCoordinate(bounds.left, bounds.right, menuWidthPx)),
+            y = desiredY.coerceIn(bounds.top, maxCoordinate(bounds.top, bounds.bottom, menuHeightPx)),
+            abovePet = abovePet,
         )
     }
 

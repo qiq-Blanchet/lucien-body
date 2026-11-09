@@ -1,171 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:fitsSystemWindows="true"
-    android:padding="24dp">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent" android:layout_height="match_parent"
+  android:background="@drawable/luc_moonlit_screen">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_title"
-            android:textAppearance="@android:style/TextAppearance.Material.Headline" />
-
-        <TextView
-            android:id="@+id/permission_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/permission_status_placeholder" />
-
-        <TextView
-            android:id="@+id/restricted_settings_help"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/restricted_settings_inline_help"
-            android:visibility="gone" />
-
-        <Button
-            android:id="@+id/app_details_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/open_app_details_button"
-            android:visibility="gone" />
-
-        <Button
-            android:id="@+id/overlay_permission_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/open_overlay_permission_button" />
-
-        <Button
-            android:id="@+id/usage_permission_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/open_usage_permission_button" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_title"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/supabase_url_input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:autofillHints="url"
-            android:hint="@string/supabase_url_hint"
-            android:inputType="textUri"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/supabase_key_input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:autofillHints="password"
-            android:hint="@string/supabase_key_hint"
-            android:inputType="textPassword"
-            android:singleLine="true" />
-
-        <Switch
-            android:id="@+id/boot_switch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/boot_setting" />
-
-        <Switch
-            android:id="@+id/self_talk_switch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/self_talk_setting" />
-
-        <TextView
-            android:id="@+id/self_talk_frequency_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:labelFor="@id/self_talk_frequency_seek" />
-
-        <SeekBar
-            android:id="@+id/self_talk_frequency_seek"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="30"
-            android:min="5" />
-
-        <Switch
-            android:id="@+id/loneliness_switch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/loneliness_setting" />
-
-        <Switch
-            android:id="@+id/app_awareness_switch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/app_awareness_setting" />
-
-        <TextView
-            android:id="@+id/pet_size_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:labelFor="@id/pet_size_seek" />
-
-        <SeekBar
-            android:id="@+id/pet_size_seek"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="120"
-            android:min="60" />
-
-        <TextView
-            android:id="@+id/bubble_duration_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:labelFor="@id/bubble_duration_seek" />
-
-        <SeekBar
-            android:id="@+id/bubble_duration_seek"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="10"
-            android:min="2" />
-
-        <Button
-            android:id="@+id/reset_position_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/reset_position_button" />
-
-        <Button
-            android:id="@+id/save_settings_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/save_settings_button" />
-
-        <Button
-            android:id="@+id/start_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/start_button" />
-
-        <Button
-            android:id="@+id/stop_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="@string/stop_button" />
+  <ScrollView android:fitsSystemWindows="true" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:fillViewport="true" android:clipToPadding="false"
+    android:paddingStart="24dp" android:paddingEnd="24dp"
+    android:paddingTop="24dp" android:paddingBottom="18dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="64dp" android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+          android:text="Luc ✦" android:textColor="#F6EDF7" android:textSize="30sp" android:typeface="serif" android:textStyle="bold"/>
+        <Button android:id="@+id/open_settings_ui_button" android:layout_width="110dp" android:layout_height="46dp"
+          android:drawableStart="@drawable/luc_moonlit_gear" android:drawablePadding="8dp" android:gravity="center"
+          android:background="@drawable/luc_moonlit_button" android:backgroundTint="@null"
+          android:text="@string/settings_title" android:textAllCaps="false" android:textColor="#F6EDF7" android:textSize="15sp"/>
+      </LinearLayout>
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:orientation="vertical"
+        android:background="@drawable/luc_moonlit_card" android:paddingStart="20dp" android:paddingEnd="20dp"
+        android:paddingTop="8dp" android:paddingBottom="8dp">
+        <Switch android:id="@+id/boot_switch" android:layout_width="match_parent" android:layout_height="54dp" android:text="@string/boot_setting" android:textColor="#F6EDF7" android:textSize="15sp" android:textStyle="bold" android:gravity="center_vertical" android:thumbTint="@color/luc_moonlit_switch_thumb" android:trackTint="@color/luc_moonlit_switch_track"/>
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/luc_moonlit_divider"/>
+        <Switch android:id="@+id/self_talk_switch" android:layout_width="match_parent" android:layout_height="54dp" android:text="@string/self_talk_setting" android:textColor="#F6EDF7" android:textSize="15sp" android:textStyle="bold" android:gravity="center_vertical" android:thumbTint="@color/luc_moonlit_switch_thumb" android:trackTint="@color/luc_moonlit_switch_track"/>
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/luc_moonlit_divider"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="12dp" android:paddingBottom="12dp"><TextView android:id="@+id/self_talk_frequency_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#F6EDF7" android:textStyle="bold" android:textSize="15sp" android:labelFor="@id/self_talk_frequency_seek"/><SeekBar android:id="@+id/self_talk_frequency_seek" android:layout_width="match_parent" android:layout_height="35dp" android:min="5" android:max="30" android:progressTint="#D9B0D2" android:thumbTint="#E5C5E2" android:progressBackgroundTint="#74677D"/></LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/luc_moonlit_divider"/>
+        <Switch android:id="@+id/loneliness_switch" android:layout_width="match_parent" android:layout_height="54dp" android:text="@string/loneliness_setting" android:textColor="#F6EDF7" android:textSize="15sp" android:textStyle="bold" android:gravity="center_vertical" android:thumbTint="@color/luc_moonlit_switch_thumb" android:trackTint="@color/luc_moonlit_switch_track"/>
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/luc_moonlit_divider"/>
+        <Switch android:id="@+id/app_awareness_switch" android:layout_width="match_parent" android:layout_height="54dp" android:text="@string/app_awareness_setting" android:textColor="#F6EDF7" android:textSize="15sp" android:textStyle="bold" android:gravity="center_vertical" android:thumbTint="@color/luc_moonlit_switch_thumb" android:trackTint="@color/luc_moonlit_switch_track"/>
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/luc_moonlit_divider"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="12dp" android:paddingBottom="12dp"><TextView android:id="@+id/pet_size_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#F6EDF7" android:textStyle="bold" android:textSize="15sp" android:labelFor="@id/pet_size_seek"/><SeekBar android:id="@+id/pet_size_seek" android:layout_width="match_parent" android:layout_height="35dp" android:min="60" android:max="120" android:progressTint="#D9B0D2" android:thumbTint="#E5C5E2" android:progressBackgroundTint="#74677D"/></LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/luc_moonlit_divider"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="12dp" android:paddingBottom="12dp"><TextView android:id="@+id/bubble_duration_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#F6EDF7" android:textStyle="bold" android:textSize="15sp" android:labelFor="@id/bubble_duration_seek"/><SeekBar android:id="@+id/bubble_duration_seek" android:layout_width="match_parent" android:layout_height="35dp" android:min="2" android:max="10" android:progressTint="#D9B0D2" android:thumbTint="#E5C5E2" android:progressBackgroundTint="#74677D"/></LinearLayout>
+      </LinearLayout>
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="16dp" android:orientation="vertical" android:background="@drawable/luc_moonlit_card"
+        android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal" android:gravity="center_vertical"><TextView android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/luc_moonlit_button" android:gravity="center" android:text="▣" android:textColor="#DEC2E0" android:textSize="15sp"/><TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="11dp" android:text="悬浮窗" android:textColor="#F6EDF7" android:textStyle="bold" android:textSize="13sp"/><TextView android:id="@+id/status_overlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/permission_granted" android:textColor="#D9B0D2" android:textSize="12sp"/></LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/luc_moonlit_divider"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal" android:gravity="center_vertical"><TextView android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/luc_moonlit_button" android:gravity="center" android:text="▣" android:textColor="#DEC2E0" android:textSize="15sp"/><TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="11dp" android:text="电池优化白名单" android:textColor="#F6EDF7" android:textStyle="bold" android:textSize="13sp"/><TextView android:id="@+id/status_battery" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/permission_granted" android:textColor="#D9B0D2" android:textSize="12sp"/></LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/luc_moonlit_divider"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal" android:gravity="center_vertical"><TextView android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/luc_moonlit_button" android:gravity="center" android:text="▥" android:textColor="#DEC2E0" android:textSize="15sp"/><TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="11dp" android:text="使用情况访问" android:textColor="#F6EDF7" android:textStyle="bold" android:textSize="13sp"/><TextView android:id="@+id/status_usage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/permission_granted" android:textColor="#D9B0D2" android:textSize="12sp"/></LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/luc_moonlit_divider"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal" android:gravity="center_vertical"><TextView android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/luc_moonlit_button" android:gravity="center" android:text="♧" android:textColor="#DEC2E0" android:textSize="15sp"/><TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="11dp" android:text="通知" android:textColor="#F6EDF7" android:textStyle="bold" android:textSize="13sp"/><TextView android:id="@+id/status_notification" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/permission_granted" android:textColor="#D9B0D2" android:textSize="12sp"/></LinearLayout>
+      </LinearLayout>
+      <LinearLayout android:id="@+id/restricted_settings_banner" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal"
+        android:gravity="center_vertical" android:padding="8dp" android:background="@drawable/luc_moonlit_hint">
+        <TextView android:layout_width="22dp" android:layout_height="wrap_content" android:text="ⓘ" android:textSize="20sp" android:textColor="#F6EDF7" android:gravity="center"/>
+        <TextView android:id="@+id/restricted_settings_help" android:layout_width="0dp" android:layout_weight="1"
+          android:layout_height="wrap_content" android:layout_marginStart="6dp" android:text="@string/restricted_settings_inline_help_short"
+          android:textColor="#F6EDF7" android:textSize="10sp" android:visibility="gone"/>
+        <Button android:id="@+id/app_details_button" android:layout_width="75dp" android:layout_height="42dp"
+          android:background="@drawable/luc_moonlit_primary" android:backgroundTint="@null"
+          android:text="@string/app_details_short" android:textAllCaps="false" android:textSize="10sp" android:textColor="#241B2A" android:visibility="gone"/>
+        <Button android:id="@+id/permission_help_button" android:layout_width="70dp" android:layout_height="42dp"
+          android:background="@drawable/luc_moonlit_button" android:backgroundTint="@null"
+          android:text="@string/permission_help_short" android:textAllCaps="false" android:textSize="10sp" android:textColor="#F6EDF7"/>
+      </LinearLayout>
+      <TextView android:id="@+id/permission_status" android:layout_width="1dp" android:layout_height="1dp"
+        android:visibility="gone" android:text="@string/permission_status_placeholder"/>
     </LinearLayout>
-</ScrollView>
+  </ScrollView>
+
+  <FrameLayout android:id="@+id/settings_overlay"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="#44100D16" android:clickable="true" android:focusable="true"
+    android:visibility="gone">
+    <ScrollView android:id="@+id/settings_sheet" android:layout_width="314dp" android:layout_height="wrap_content"
+      android:layout_gravity="center" android:fillViewport="false" android:scrollbars="none"
+      android:background="@drawable/luc_moonlit_modal" android:padding="16dp">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="42dp" android:gravity="center_vertical" android:orientation="horizontal">
+          <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent"
+            android:gravity="center_vertical" android:drawableStart="@drawable/luc_moonlit_gear"
+            android:drawablePadding="9dp" android:text="@string/settings_title" android:textColor="#F6EDF7" android:textSize="18sp" android:textStyle="bold"/>
+          <Button android:id="@+id/close_settings_ui_button" android:layout_width="38dp" android:layout_height="38dp"
+            android:background="@drawable/luc_moonlit_button" android:backgroundTint="@null"
+            android:text="×" android:textAllCaps="false" android:textSize="23sp" android:textColor="#F6EDF7"/>
+        </LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="12dp"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp" android:background="@drawable/luc_moonlit_inner">
+          <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp" android:gravity="center" android:drawableStart="@drawable/luc_moonlit_link" android:drawablePadding="8dp" android:text="连接设置" android:textColor="#F6EDF7" android:textSize="14sp" android:textStyle="bold"/>
+          <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="API 地址" android:textColor="#D7C4DF" android:textSize="12sp"/>
+          <EditText android:id="@+id/supabase_url_input" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:background="@drawable/luc_moonlit_field"
+            android:padding="10dp" android:singleLine="true" android:inputType="textUri"
+            android:autofillHints="url" android:textColor="#F6EDF7" android:textSize="12sp"
+            android:hint="@string/supabase_url_hint" android:textColorHint="#C2A6CA"/>
+          <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="API Key" android:textColor="#D7C4DF" android:textSize="12sp"/>
+          <EditText android:id="@+id/supabase_key_input" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:background="@drawable/luc_moonlit_field"
+            android:padding="10dp" android:singleLine="true" android:inputType="textPassword"
+            android:autofillHints="password" android:textColor="#F6EDF7" android:textSize="12sp"
+            android:hint="@string/supabase_key_hint" android:textColorHint="#C2A6CA"/>
+        </LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="12dp"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp" android:background="@drawable/luc_moonlit_inner">
+          <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp" android:gravity="center" android:drawableStart="@drawable/luc_moonlit_shield" android:drawablePadding="8dp" android:text="权限与工具" android:textColor="#F6EDF7" android:textSize="14sp" android:textStyle="bold"/>
+          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <Button android:id="@+id/open_app_details_settings_button" android:drawableTop="@drawable/luc_moonlit_grid" android:drawablePadding="6dp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="80dp" android:layout_margin="3dp" android:background="@drawable/luc_moonlit_button" android:backgroundTint="@null" android:text="@string/app_details_short" android:textAllCaps="false" android:textSize="11sp" android:textColor="#F6EDF7"/>
+            <Button android:id="@+id/overlay_permission_button" android:drawableTop="@drawable/luc_moonlit_overlay" android:drawablePadding="6dp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="80dp" android:layout_margin="3dp" android:background="@drawable/luc_moonlit_button" android:backgroundTint="@null" android:text="@string/open_overlay_permission_button" android:textAllCaps="false" android:textSize="11sp" android:textColor="#F6EDF7"/>
+            <Button android:id="@+id/usage_permission_button" android:drawableTop="@drawable/luc_moonlit_bars" android:drawablePadding="6dp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="80dp" android:layout_margin="3dp" android:background="@drawable/luc_moonlit_button" android:backgroundTint="@null" android:text="@string/open_usage_permission_button" android:textAllCaps="false" android:textSize="11sp" android:textColor="#F6EDF7"/>
+          </LinearLayout>
+        </LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="12dp"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp" android:background="@drawable/luc_moonlit_inner">
+          <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp" android:gravity="center" android:drawableStart="@drawable/luc_moonlit_pet" android:drawablePadding="8dp" android:text="宠物与系统" android:textColor="#F6EDF7" android:textSize="14sp" android:textStyle="bold"/>
+          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <Button android:id="@+id/reset_position_button" android:drawableStart="@drawable/luc_moonlit_reset" android:drawablePadding="6dp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:layout_margin="4dp" android:background="@drawable/luc_moonlit_button" android:backgroundTint="@null" android:text="@string/reset_position_button" android:textAllCaps="false" android:textSize="12sp" android:textColor="#F6EDF7"/>
+            <Button android:id="@+id/save_settings_button" android:drawableStart="@drawable/luc_moonlit_save" android:drawablePadding="6dp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:layout_margin="4dp" android:background="@drawable/luc_moonlit_primary" android:backgroundTint="@null" android:text="@string/save_settings_button" android:textAllCaps="false" android:textSize="12sp" android:textColor="#211C29"/>
+          </LinearLayout>
+          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <Button android:id="@+id/start_button" android:drawableStart="@drawable/luc_moonlit_play" android:drawablePadding="6dp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:layout_margin="4dp" android:background="@drawable/luc_moonlit_button" android:backgroundTint="@null" android:text="@string/start_button" android:textAllCaps="false" android:textSize="12sp" android:textColor="#F6EDF7"/>
+            <Button android:id="@+id/stop_button" android:drawableStart="@drawable/luc_moonlit_stop" android:drawablePadding="6dp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:layout_margin="4dp" android:background="@drawable/luc_moonlit_button" android:backgroundTint="@null" android:text="@string/stop_button" android:textAllCaps="false" android:textSize="12sp" android:textColor="#F6EDF7"/>
+          </LinearLayout>
+        </LinearLayout>
+      </LinearLayout>
+    </ScrollView>
+  </FrameLayout>
+</FrameLayout>

@@ -132,4 +132,38 @@ class OverlayGeometryTest {
         assertEquals(455, pet.bubbleX)
         assertEquals(190, pet.bubbleY)
     }
+
+    @Test
+    fun miniMenuSitsBelowTheVisibleCrabWhenThereIsRoom() {
+        val bounds = SafeBoundsPx(0, 40, 1080, 2200)
+        val menu = geometry.miniMenuPlacement(500, 600, 224, 376, bounds)
+
+        assertFalse(menu.abovePet)
+        assertEquals(478, menu.x)
+        assertEquals(744, menu.y)
+    }
+
+    @Test
+    fun miniMenuFlipsAboveTheVisibleHeadNearBottom() {
+        val bounds = SafeBoundsPx(0, 40, 1080, 2200)
+        val menu = geometry.miniMenuPlacement(500, 2000, 224, 376, bounds)
+
+        assertTrue(menu.abovePet)
+        assertEquals(478, menu.x)
+        assertEquals(1698, menu.y)
+        // Visible head begins at about petY + 53dp; resulting visual gap is 16dp.
+        assertEquals(32, 2000 + 106 - (menu.y + 376))
+    }
+
+    @Test
+    fun miniMenuClampsInsideSafeSidesWhenPetIsSnapped() {
+        val bounds = SafeBoundsPx(50, 100, 1050, 2000)
+
+        val left = geometry.miniMenuPlacement(-10, 500, 224, 376, bounds)
+        val right = geometry.miniMenuPlacement(1030, 500, 224, 376, bounds)
+
+        assertEquals(50, left.x)
+        assertEquals(826, right.x)
+    }
+
 }

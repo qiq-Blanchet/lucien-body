@@ -45,4 +45,7 @@
     <string name="usage_permission_reason">可选：使用情况访问让 Luc 判断当前前台 app，从而显示 peeking、waving 等状态。Luc 不读取 app 内的内容；跳过后仅关闭这项感知。Android 16 从 APK 安装时，若开关不可点，请先在 Luc 应用详情中允许受限设置。</string>
     <string name="notification_permission_title">允许通知</string>
     <string name="notification_permission_reason">Android 13 及以上建议允许通知，以便看到 Luc 的常驻状态以及“显示/隐藏”和“退出”操作。</string>
+    <string name="restricted_settings_inline_help_short">Android 16 若无法开启权限，请前往应用详情，允许受限设置。</string>
+    <string name="app_details_short">应用详情</string>
+    <string name="permission_help_short">权限帮助</string>
 </resources>
