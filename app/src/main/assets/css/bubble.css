@@ -34,17 +34,25 @@ body.bubble-below .bubble {
 }
 
 .bubble--normal { background: #FFF8EC; }
-.bubble--whisper { color: #5D4D47; font-size: 13px; }
+.bubble--whisper {
+  padding: 8px 12px;
+  background: #F2EDF3;
+  color: #756471;
+  font-size: 13px;
+  line-height: 1.3;
+  box-shadow: 0 7px 18px rgba(92, 70, 91, .08);
+}
 .bubble--shout { background: #FFE4D5; font-size: 17px; }
 .bubble--love { background: #FFE7EE; color: #9A3150; }
-.bubble--sleepy { opacity: 0; }
+.bubble--sleepy {
+  background: #EEF0FA;
+  color: #5E647D;
+  box-shadow: 0 8px 20px rgba(76, 82, 117, .10);
+}
 .bubble--sleepy::after {
-  content: "…";
-  display: inline-block;
-  width: 1em;
-  overflow: hidden;
-  vertical-align: bottom;
-  animation: sleepy-dots 1.2s steps(2, end) infinite;
+  content: "  ☾";
+  color: #8C91AD;
+  font-size: 13px;
 }
 .bubble--visible { animation: bubble-cycle 5s ease-in-out 1 both; }
 
@@ -63,9 +71,4 @@ body.bubble-below .bubble {
   0% { opacity: 0; translate: 0 6px; }
   12%, 82% { opacity: 1; translate: 0; }
   100% { opacity: 0; translate: 0 -4px; }
-}
-
-@keyframes sleepy-dots {
-  from { width: 0; }
-  to { width: 1em; }
 }
