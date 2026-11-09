@@ -261,6 +261,7 @@ class SupabaseRealtimeClientTest {
 
         assertTrue(joinReceived.await(2, TimeUnit.SECONDS))
         requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        waitUntil { scheduler.activeTasks().any { it.delayMs == 10_000L } }
         assertTrue(scheduler.activeTasks().any { it.delayMs == 10_000L })
         scheduler.runNext(10_000L)
         val fallback = requireNotNull(server.takeRequest(2, TimeUnit.SECONDS))
