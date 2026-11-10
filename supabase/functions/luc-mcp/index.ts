@@ -85,7 +85,7 @@ const TOOLS = [
   {
     name: "luc_update",
     description:
-      "一次更新 Luc 小螃蟹的表情、气泡文字、气泡样式和三个情绪数值，至少传一项。所有传入字段在同一笔状态更新中生效。可用表情：idle、happy、angry、sleepy、thinking、talking、love、smug、shocked、confused、shy、proud、sulky、lonely_1/2/3、waving、peeking、morning、night、eating、dancing、dizzy、clingy、grabbed（被抓住）、stuck（侧边吸附）、stuck_tap（吸附时被点）、stuck_grab（从侧边抓起）。未传的表情和情绪数值保持当前值；未传 bubble_text 时清掉旧气泡，防止上一句话被重新播放。",
+      "一次更新 Luc clawd 的表情、气泡文字、气泡样式和三个情绪数值，至少传一项。所有传入字段在同一笔状态更新中生效。可用表情：idle、happy、angry、sleepy、thinking、talking、love、smug、shocked、confused、shy、proud、sulky、lonely_1/2/3、waving、peeking、morning、night、eating、dancing、dizzy、clingy、grabbed（被抓住）、stuck（侧边吸附）、stuck_tap（吸附时被点）、stuck_grab（从侧边抓起）。未传的表情和情绪数值保持当前值；未传 bubble_text 时清掉旧气泡，防止上一句话被重新播放。",
     inputSchema: {
       type: "object",
       properties: {
@@ -128,7 +128,7 @@ const TOOLS = [
       additionalProperties: false,
     },
     annotations: {
-      title: "更新 Luc 状态",
+      title: "更新 Luc clawd 状态",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
@@ -138,14 +138,14 @@ const TOOLS = [
   {
     name: "luc_get_status",
     description:
-      "读取 Luc 当前的表情、气泡文字、气泡样式、情感效价 valence、唤醒度 arousal、亲密热度 heat 以及最后更新时间。",
+      "读取 Luc clawd 当前的表情、气泡文字、气泡样式、情感效价 valence、唤醒度 arousal、亲密热度 heat 以及最后更新时间。",
     inputSchema: {
       type: "object",
       properties: {},
       additionalProperties: false,
     },
     annotations: {
-      title: "读取 Luc 状态",
+      title: "读取 Luc clawd 状态",
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
@@ -155,7 +155,7 @@ const TOOLS = [
   {
     name: "luc_get_events",
     description:
-      "读取用户与小螃蟹的最新互动事件，不会删除或标记已读。事件类型：tap（单击）、double_tap（双击）、pet_head（摸头）、drag_start/drag_end（开始/结束拖动）、fling（甩动）、stuck_tap（吸附时点击）、app_foreground（前台应用变化）。结果按时间从新到旧排列。",
+      "读取用户与 Luc clawd 的最新互动事件，不会删除或标记已读。事件类型：tap（单击）、double_tap（双击）、pet_head（摸头）、drag_start/drag_end（开始/结束拖动）、fling（甩动）、stuck_tap（吸附时点击）、app_foreground（前台应用变化）。结果按时间从新到旧排列。",
     inputSchema: {
       type: "object",
       properties: {
@@ -180,7 +180,7 @@ const TOOLS = [
       additionalProperties: false,
     },
     annotations: {
-      title: "读取 Luc 互动",
+      title: "读取 Luc clawd 互动",
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
