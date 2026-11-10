@@ -7,7 +7,6 @@ data class MiniMenuActions(
     val onPoke: () -> Unit,
     val onPetHead: () -> Unit,
     val onHide: () -> Unit,
-    val onSettings: () -> Unit,
 )
 
 data class OverlayInteractionCallbacks(

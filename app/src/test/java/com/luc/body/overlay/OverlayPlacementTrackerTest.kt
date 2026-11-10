@@ -11,8 +11,8 @@ class OverlayPlacementTrackerTest {
         val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
 
         tracker.initialPlacement()
-        assertEquals(OverlayPlacementPx(884, 900, 820, 780, false), tracker.moveBy(-10f, 6f))
-        assertEquals(OverlayPlacementPx(888, 892, 820, 772, false), tracker.moveBy(4f, -8f))
+        assertEquals(OverlayPlacementPx(445, 233, 400, 113, false), tracker.moveBy(-10f, 6f))
+        assertEquals(OverlayPlacementPx(449, 225, 404, 105, false), tracker.moveBy(4f, -8f))
     }
 
     @Test
@@ -20,8 +20,8 @@ class OverlayPlacementTrackerTest {
         val tracker = OverlayPlacementTracker(OverlayGeometry(density = 1f)) { bounds }
 
         tracker.initialPlacement()
-        assertEquals(894, tracker.moveBy(0.4f, 0f).petX)
-        assertEquals(895, tracker.moveBy(0.4f, 0f).petX)
+        assertEquals(455, tracker.moveBy(0.4f, 0f).petX)
+        assertEquals(456, tracker.moveBy(0.4f, 0f).petX)
     }
 
     @Test
@@ -32,7 +32,7 @@ class OverlayPlacementTrackerTest {
         tracker.initialPlacement()
         currentBounds = SafeBoundsPx(100, 100, 500, 500)
 
-        assertEquals(OverlayPlacementPx(410, 410, 320, 290, false), tracker.moveBy(0f, 0f))
+        assertEquals(OverlayPlacementPx(410, 227, 320, 107, false), tracker.moveBy(0f, 0f))
     }
 
     @Test
@@ -43,7 +43,7 @@ class OverlayPlacementTrackerTest {
         tracker.initialPlacement()
         currentBounds = SafeBoundsPx(100, 100, 500, 500)
 
-        assertEquals(OverlayPlacementPx(410, 410, 320, 290, false), tracker.reclampToCurrentBounds())
+        assertEquals(OverlayPlacementPx(410, 227, 320, 107, false), tracker.reclampToCurrentBounds())
     }
 
     @Test

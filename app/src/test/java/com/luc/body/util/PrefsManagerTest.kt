@@ -9,8 +9,8 @@ class PrefsManagerTest {
     fun defaultsAndRangesMatchV2Spec() {
         assertTrue(PrefsManager.DEFAULT_BOOT_ENABLED)
         assertTrue(PrefsManager.DEFAULT_SELF_TALK_ENABLED)
-        assertEquals(10, PrefsManager.DEFAULT_SELF_TALK_FREQUENCY_MINUTES)
-        assertEquals(5..30, PrefsManager.MIN_SELF_TALK_FREQUENCY_MINUTES..PrefsManager.MAX_SELF_TALK_FREQUENCY_MINUTES)
+        assertEquals(30, PrefsManager.DEFAULT_SELF_TALK_FREQUENCY_MINUTES)
+        assertEquals(30..60, PrefsManager.MIN_SELF_TALK_FREQUENCY_MINUTES..PrefsManager.MAX_SELF_TALK_FREQUENCY_MINUTES)
         assertTrue(PrefsManager.DEFAULT_LONELINESS_ENABLED)
         assertTrue(PrefsManager.DEFAULT_APP_AWARENESS_ENABLED)
         assertEquals(90, PrefsManager.DEFAULT_PET_SIZE_DP)
@@ -23,8 +23,8 @@ class PrefsManagerTest {
 
     @Test
     fun numericSettingsAreClampedToSpecRanges() {
-        assertEquals(5, PrefsManager.normalizeSelfTalkFrequency(0))
-        assertEquals(30, PrefsManager.normalizeSelfTalkFrequency(31))
+        assertEquals(30, PrefsManager.normalizeSelfTalkFrequency(0))
+        assertEquals(60, PrefsManager.normalizeSelfTalkFrequency(61))
         assertEquals(60, PrefsManager.normalizePetSize(0))
         assertEquals(120, PrefsManager.normalizePetSize(121))
         assertEquals(2, PrefsManager.normalizeBubbleDuration(0))

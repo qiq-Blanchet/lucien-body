@@ -43,8 +43,8 @@ class OverlayWindowSpecTest {
     fun emotionMetricsWindowMatchesTheApprovedPanelAndNeverAcceptsTouches() {
         val metrics = OverlayWindowSpec.metrics()
 
-        assertEquals(112, metrics.widthDp)
-        assertEquals(106, metrics.heightDp)
+        assertEquals(88, metrics.widthDp)
+        assertEquals(88, metrics.heightDp)
         assertFalse(metrics.touchable)
         assertEquals(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -55,8 +55,27 @@ class OverlayWindowSpecTest {
     }
 
     @Test
+    fun menuWindowUsesGlobalOverlayCoordinatesAndAcceptsOnlyItsOwnTouches() {
+        val menu = OverlayWindowSpec.menu()
+
+        assertEquals(88, menu.widthDp)
+        assertEquals(112, menu.heightDp)
+        assertTrue(menu.touchable)
+        assertEquals(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, menu.type)
+        assertEquals(Gravity.TOP or Gravity.START, menu.gravity)
+        assertTrue(menu.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE != 0)
+        assertTrue(menu.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL != 0)
+        assertEquals(0, menu.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+    }
+
+    @Test
     fun bothWindowsUseTheApprovedOverlayWindowConfiguration() {
-        listOf(OverlayWindowSpec.pet(), OverlayWindowSpec.bubble(), OverlayWindowSpec.metrics()).forEach { spec ->
+        listOf(
+            OverlayWindowSpec.pet(),
+            OverlayWindowSpec.bubble(),
+            OverlayWindowSpec.metrics(),
+            OverlayWindowSpec.menu(),
+        ).forEach { spec ->
             assertEquals(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, spec.type)
             assertEquals(PixelFormat.TRANSLUCENT, spec.pixelFormat)
             assertEquals(Gravity.TOP or Gravity.START, spec.gravity)
@@ -67,6 +86,6 @@ class OverlayWindowSpecTest {
     fun sizesConvertFromDpToExactPixelsForWindowLayout() {
         assertEquals(OverlaySizePx(width = 113, height = 113), OverlayWindowSpec.pet().sizePx(1.25f))
         assertEquals(OverlaySizePx(width = 225, height = 150), OverlayWindowSpec.bubble().sizePx(1.25f))
-        assertEquals(OverlaySizePx(width = 140, height = 133), OverlayWindowSpec.metrics().sizePx(1.25f))
+        assertEquals(OverlaySizePx(width = 110, height = 110), OverlayWindowSpec.metrics().sizePx(1.25f))
     }
 }

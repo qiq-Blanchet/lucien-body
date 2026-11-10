@@ -1,171 +1,306 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:fitsSystemWindows="true"
-    android:padding="24dp">
+    android:background="@drawable/bg_luc_screen"
+    android:fitsSystemWindows="true">
 
-    <LinearLayout
+    <ScrollView
+        android:id="@+id/main_scroll"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:overScrollMode="never"
+        android:scrollbars="none"
+        android:paddingStart="22dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="22dp"
+        android:paddingBottom="28dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_title"
-            android:textAppearance="@android:style/TextAppearance.Material.Headline" />
-
-        <TextView
-            android:id="@+id/permission_status"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/permission_status_placeholder" />
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/restricted_settings_help"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="serif"
+                    android:text="@string/app_title"
+                    android:textColor="@color/luc_text_primary"
+                    android:textSize="44sp"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_luc_sparkle" />
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <LinearLayout
+                    android:id="@+id/settings_button"
+                    android:layout_width="104dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_luc_button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="@null" android:src="@drawable/ic_luc_settings" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/settings_title" android:textColor="@color/luc_text_primary" android:textSize="16sp" android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:background="@drawable/bg_luc_card"
+                android:orientation="vertical"
+                android:paddingStart="20dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="16dp">
+
+                <Switch
+                    android:id="@+id/boot_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:gravity="center_vertical"
+                    android:showText="false"
+                    android:splitTrack="false"
+                    android:text="@string/boot_setting"
+                    android:textColor="@color/luc_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:thumbTint="@color/luc_switch_thumb"
+                    android:trackTint="@color/luc_switch_track" />
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/luc_divider" />
+
+                <Switch
+                    android:id="@+id/self_talk_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:gravity="center_vertical"
+                    android:showText="false"
+                    android:splitTrack="false"
+                    android:text="@string/self_talk_setting"
+                    android:textColor="@color/luc_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:thumbTint="@color/luc_switch_thumb"
+                    android:trackTint="@color/luc_switch_track" />
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/luc_divider" />
+
+                <TextView
+                    android:id="@+id/self_talk_frequency_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:labelFor="@id/self_talk_frequency_seek"
+                    android:textColor="@color/luc_text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <SeekBar
+                    android:id="@+id/self_talk_frequency_seek"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:max="60"
+                    android:min="30"
+                    android:progressTint="@color/luc_accent"
+                    android:progressBackgroundTint="#80748686"
+                    android:thumbTint="@color/luc_accent_light" />
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/luc_divider" />
+
+                <Switch
+                    android:id="@+id/loneliness_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:gravity="center_vertical"
+                    android:showText="false"
+                    android:splitTrack="false"
+                    android:text="@string/loneliness_setting"
+                    android:textColor="@color/luc_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:thumbTint="@color/luc_switch_thumb"
+                    android:trackTint="@color/luc_switch_track" />
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/luc_divider" />
+
+                <Switch
+                    android:id="@+id/app_awareness_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:gravity="center_vertical"
+                    android:showText="false"
+                    android:splitTrack="false"
+                    android:text="@string/app_awareness_setting"
+                    android:textColor="@color/luc_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:thumbTint="@color/luc_switch_thumb"
+                    android:trackTint="@color/luc_switch_track" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_luc_card"
+                android:orientation="vertical"
+                android:paddingStart="18dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="18dp"
+                android:paddingBottom="8dp">
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:orientation="horizontal">
+                    <ImageView android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_luc_icon_tile" android:contentDescription="@null" android:padding="8dp" android:src="@drawable/ic_luc_overlay" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:text="@string/overlay_status_label" android:textColor="@color/luc_text_primary" android:textSize="15sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/overlay_permission_status" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/luc_accent_light" android:textSize="14sp" />
+                </LinearLayout>
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/luc_divider" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:orientation="horizontal">
+                    <ImageView android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_luc_icon_tile" android:contentDescription="@null" android:padding="8dp" android:src="@drawable/ic_luc_battery" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:text="@string/battery_status_label" android:textColor="@color/luc_text_primary" android:textSize="15sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/battery_permission_status" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/luc_accent_light" android:textSize="14sp" />
+                </LinearLayout>
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/luc_divider" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:orientation="horizontal">
+                    <ImageView android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_luc_icon_tile" android:contentDescription="@null" android:padding="8dp" android:src="@drawable/ic_luc_usage" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:text="@string/usage_status_label" android:textColor="@color/luc_text_primary" android:textSize="15sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/usage_permission_status" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/luc_accent_light" android:textSize="14sp" />
+                </LinearLayout>
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/luc_divider" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:orientation="horizontal">
+                    <ImageView android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_luc_icon_tile" android:contentDescription="@null" android:padding="8dp" android:src="@drawable/ic_luc_bell" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:text="@string/notification_status_label" android:textColor="@color/luc_text_primary" android:textSize="15sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/notification_permission_status" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/luc_accent_light" android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/restricted_settings_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_luc_card"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:visibility="gone">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:contentDescription="@null" android:src="@drawable/ic_luc_info" />
+                <TextView android:id="@+id/restricted_settings_help" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:layout_weight="1" android:maxLines="3" android:text="@string/restricted_settings_inline_help_short" android:textColor="@color/luc_text_primary" android:textSize="12sp" />
+                <Button android:id="@+id/app_details_button" android:layout_width="74dp" android:layout_height="44dp" android:layout_marginStart="6dp" android:background="@drawable/bg_luc_button_accent" android:minHeight="0dp" android:minWidth="0dp" android:padding="0dp" android:text="@string/app_details_short" android:textAllCaps="false" android:textColor="@color/luc_text_primary" android:textSize="12sp" android:textStyle="bold" />
+                <Button android:id="@+id/permission_help_button" android:layout_width="74dp" android:layout_height="44dp" android:layout_marginStart="6dp" android:background="@drawable/bg_luc_button" android:minHeight="0dp" android:minWidth="0dp" android:padding="0dp" android:text="@string/permission_help" android:textAllCaps="false" android:textColor="@color/luc_text_primary" android:textSize="12sp" android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <FrameLayout
+        android:id="@+id/settings_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/luc_dim"
+        android:clickable="true"
+        android:focusable="true"
+        android:paddingStart="20dp"
+        android:paddingTop="28dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="28dp"
+        android:visibility="gone">
+
+        <ScrollView
+            android:id="@+id/settings_panel"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/restricted_settings_inline_help"
-            android:visibility="gone" />
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_luc_modal"
+            android:clickable="true"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:overScrollMode="never"
+            android:scrollbars="none"
+            android:padding="18dp">
 
-        <Button
-            android:id="@+id/app_details_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/open_app_details_button"
-            android:visibility="gone" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="50dp" android:gravity="center_vertical" android:orientation="horizontal">
+                    <ImageView android:layout_width="24dp" android:layout_height="24dp" android:contentDescription="@null" android:src="@drawable/ic_luc_settings" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:layout_weight="1" android:text="@string/settings_title" android:textColor="@color/luc_text_primary" android:textSize="21sp" android:textStyle="bold" />
+                    <ImageButton android:id="@+id/settings_close_button" android:layout_width="44dp" android:layout_height="44dp" android:background="@drawable/bg_luc_close" android:contentDescription="@string/close_settings" android:padding="11dp" android:src="@drawable/ic_luc_close" />
+                </LinearLayout>
 
-        <Button
-            android:id="@+id/overlay_permission_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/open_overlay_permission_button" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_luc_inner_card" android:orientation="vertical" android:padding="14dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:drawableStart="@drawable/ic_luc_link" android:drawablePadding="8dp" android:gravity="center_vertical" android:text="@string/connection_settings" android:textColor="@color/luc_text_primary" android:textSize="17sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/api_url_label" android:textColor="@color/luc_accent_light" android:textSize="14sp" android:textStyle="bold" />
+                    <EditText android:id="@+id/supabase_url_input" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="6dp" android:autofillHints="url" android:background="@drawable/bg_luc_input" android:hint="@string/supabase_url_hint" android:inputType="textUri" android:singleLine="true" android:textColor="@color/luc_text_primary" android:textColorHint="@color/luc_text_muted" android:textSize="14sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/api_key_label" android:textColor="@color/luc_accent_light" android:textSize="14sp" android:textStyle="bold" />
+                    <EditText android:id="@+id/supabase_key_input" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="6dp" android:autofillHints="password" android:background="@drawable/bg_luc_input" android:hint="@string/supabase_key_hint" android:inputType="textPassword" android:singleLine="true" android:textColor="@color/luc_text_primary" android:textColorHint="@color/luc_text_muted" android:textSize="14sp" />
+                </LinearLayout>
 
-        <Button
-            android:id="@+id/usage_permission_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/open_usage_permission_button" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_luc_inner_card" android:orientation="vertical" android:padding="14dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:drawableStart="@drawable/ic_luc_shield" android:drawablePadding="8dp" android:gravity="center_vertical" android:text="@string/permissions_and_tools" android:textColor="@color/luc_text_primary" android:textSize="17sp" android:textStyle="bold" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="92dp" android:layout_marginTop="12dp" android:baselineAligned="false" android:orientation="horizontal">
+                        <LinearLayout android:id="@+id/settings_app_details_button" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_luc_button" android:clickable="true" android:focusable="true" android:gravity="center" android:orientation="vertical" android:padding="8dp">
+                            <ImageView android:layout_width="22dp" android:layout_height="22dp" android:contentDescription="@null" android:src="@drawable/ic_luc_apps" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:gravity="center" android:maxLines="2" android:text="@string/app_details_short" android:textColor="@color/luc_text_primary" android:textSize="13sp" android:textStyle="bold" />
+                        </LinearLayout>
+                        <Space android:layout_width="8dp" android:layout_height="match_parent" />
+                        <LinearLayout android:id="@+id/overlay_permission_button" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_luc_button" android:clickable="true" android:focusable="true" android:gravity="center" android:orientation="vertical" android:padding="8dp">
+                            <ImageView android:layout_width="22dp" android:layout_height="22dp" android:contentDescription="@null" android:src="@drawable/ic_luc_overlay" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:gravity="center" android:maxLines="2" android:text="@string/overlay_permission_short" android:textColor="@color/luc_text_primary" android:textSize="13sp" android:textStyle="bold" />
+                        </LinearLayout>
+                        <Space android:layout_width="8dp" android:layout_height="match_parent" />
+                        <LinearLayout android:id="@+id/usage_permission_button" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_luc_button" android:clickable="true" android:focusable="true" android:gravity="center" android:orientation="vertical" android:padding="8dp">
+                            <ImageView android:layout_width="22dp" android:layout_height="22dp" android:contentDescription="@null" android:src="@drawable/ic_luc_usage" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:gravity="center" android:maxLines="2" android:text="@string/usage_permission_short" android:textColor="@color/luc_text_primary" android:textSize="13sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_title"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/supabase_url_input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:autofillHints="url"
-            android:hint="@string/supabase_url_hint"
-            android:inputType="textUri"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/supabase_key_input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:autofillHints="password"
-            android:hint="@string/supabase_key_hint"
-            android:inputType="textPassword"
-            android:singleLine="true" />
-
-        <Switch
-            android:id="@+id/boot_switch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/boot_setting" />
-
-        <Switch
-            android:id="@+id/self_talk_switch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/self_talk_setting" />
-
-        <TextView
-            android:id="@+id/self_talk_frequency_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:labelFor="@id/self_talk_frequency_seek" />
-
-        <SeekBar
-            android:id="@+id/self_talk_frequency_seek"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="30"
-            android:min="5" />
-
-        <Switch
-            android:id="@+id/loneliness_switch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/loneliness_setting" />
-
-        <Switch
-            android:id="@+id/app_awareness_switch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/app_awareness_setting" />
-
-        <TextView
-            android:id="@+id/pet_size_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:labelFor="@id/pet_size_seek" />
-
-        <SeekBar
-            android:id="@+id/pet_size_seek"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="120"
-            android:min="60" />
-
-        <TextView
-            android:id="@+id/bubble_duration_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:labelFor="@id/bubble_duration_seek" />
-
-        <SeekBar
-            android:id="@+id/bubble_duration_seek"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="10"
-            android:min="2" />
-
-        <Button
-            android:id="@+id/reset_position_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/reset_position_button" />
-
-        <Button
-            android:id="@+id/save_settings_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/save_settings_button" />
-
-        <Button
-            android:id="@+id/start_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/start_button" />
-
-        <Button
-            android:id="@+id/stop_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="@string/stop_button" />
-    </LinearLayout>
-</ScrollView>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:layout_marginBottom="4dp" android:background="@drawable/bg_luc_inner_card" android:orientation="vertical" android:padding="14dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/pet_and_system" android:textColor="@color/luc_text_primary" android:textSize="17sp" android:textStyle="bold" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="12dp" android:orientation="horizontal">
+                        <LinearLayout android:id="@+id/reset_position_button" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_luc_button" android:clickable="true" android:focusable="true" android:gravity="center" android:orientation="horizontal">
+                            <ImageView android:layout_width="16dp" android:layout_height="16dp" android:contentDescription="@null" android:src="@drawable/ic_luc_reset" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/reset_position_button" android:textColor="@color/luc_text_primary" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                        <Space android:layout_width="10dp" android:layout_height="match_parent" />
+                        <LinearLayout android:id="@+id/save_settings_button" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_luc_button_accent" android:clickable="true" android:focusable="true" android:gravity="center" android:orientation="horizontal">
+                            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="@null" android:src="@drawable/ic_luc_save" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/save_settings_button" android:textColor="@color/luc_text_primary" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="8dp" android:orientation="horizontal">
+                        <LinearLayout android:id="@+id/start_button" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_luc_button" android:clickable="true" android:focusable="true" android:gravity="center" android:orientation="horizontal">
+                            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="@null" android:src="@drawable/ic_luc_play" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/start_button" android:textColor="@color/luc_text_primary" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                        <Space android:layout_width="10dp" android:layout_height="match_parent" />
+                        <LinearLayout android:id="@+id/stop_button" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_luc_button" android:clickable="true" android:focusable="true" android:gravity="center" android:orientation="horizontal">
+                            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="@null" android:src="@drawable/ic_luc_stop" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/stop_button" android:textColor="@color/luc_text_primary" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+</FrameLayout>

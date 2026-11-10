@@ -69,9 +69,9 @@ class PrefsManager(
     companion object {
         const val DEFAULT_BOOT_ENABLED = true
         const val DEFAULT_SELF_TALK_ENABLED = true
-        const val DEFAULT_SELF_TALK_FREQUENCY_MINUTES = 10
-        const val MIN_SELF_TALK_FREQUENCY_MINUTES = 5
-        const val MAX_SELF_TALK_FREQUENCY_MINUTES = 30
+        const val DEFAULT_SELF_TALK_FREQUENCY_MINUTES = 30
+        const val MIN_SELF_TALK_FREQUENCY_MINUTES = 30
+        const val MAX_SELF_TALK_FREQUENCY_MINUTES = 60
         const val DEFAULT_LONELINESS_ENABLED = true
         const val DEFAULT_APP_AWARENESS_ENABLED = true
         const val DEFAULT_PET_SIZE_DP = 90

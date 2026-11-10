@@ -1,4 +1,17 @@
 <resources>
-    <color name="luc_background">#FFF7F3</color>
-    <color name="luc_accent">#C74B2A</color>
+    <color name="luc_background">#171622</color>
+    <color name="luc_background_end">#1E1928</color>
+    <color name="luc_card">#4A4354</color>
+    <color name="luc_card_dark">#282333</color>
+    <color name="luc_card_border">#6B5B73</color>
+    <color name="luc_control">#51475A</color>
+    <color name="luc_control_pressed">#61536A</color>
+    <color name="luc_accent">#D598D7</color>
+    <color name="luc_accent_light">#F6B9D0</color>
+    <color name="luc_accent_strong">#EB7FAB</color>
+    <color name="luc_text_primary">#FFF8FD</color>
+    <color name="luc_text_secondary">#DCCFE1</color>
+    <color name="luc_text_muted">#B9A9C0</color>
+    <color name="luc_divider">#665C6F</color>
+    <color name="luc_dim">#AA0B0A12</color>
 </resources>

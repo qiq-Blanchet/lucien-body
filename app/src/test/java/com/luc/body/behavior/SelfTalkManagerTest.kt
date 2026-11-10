@@ -40,7 +40,7 @@ class SelfTalkManagerTest {
     }
 
     @Test
-    fun schedulesOnlyBetweenFiveAndFifteenMinutesAndUsesTheCurrentPool() {
+    fun defaultSettingSchedulesAtExactlyThirtyMinutesAndUsesTheCurrentPool() {
         val clock = MutableClock(Instant.parse("2026-08-04T06:30:00Z"))
         val scheduler = BehaviorScheduler(clock)
         val sink = BehaviorSink()
@@ -48,15 +48,14 @@ class SelfTalkManagerTest {
 
         manager.start()
         val delay = scheduler.nextDelayMs!!
-        assertTrue(delay in 5 * 60_000L..15 * 60_000L)
+        assertEquals(30 * 60_000L, delay)
         scheduler.advanceBy(delay)
 
         assertTrue(sink.states.last().bubbleText in SelfTalkManager.messagesFor(DayPeriod.MORNING))
-        assertTrue(scheduler.nextDelayMs!! in 4_000L..15 * 60_000L)
     }
 
     @Test
-    fun thirtyMinuteSettingSchedulesBetweenTwentyFiveAndThirtyMinutes() {
+    fun selectedFrequencyIsTheActualDelayFromThirtyThroughSixtyMinutes() {
         val clock = MutableClock()
         val scheduler = BehaviorScheduler(clock)
         val manager = SelfTalkManager(
@@ -69,17 +68,28 @@ class SelfTalkManagerTest {
 
         manager.start()
 
-        assertTrue(scheduler.nextDelayMs!! in 25 * 60_000L..30 * 60_000L)
+        assertEquals(30 * 60_000L, scheduler.nextDelayMs!!)
+
+        val sixtyMinuteScheduler = BehaviorScheduler(clock)
+        val sixtyMinuteManager = SelfTalkManager(
+            coordinator(BehaviorSink(), sixtyMinuteScheduler),
+            sixtyMinuteScheduler,
+            clock,
+            Random(5),
+            frequencyMinutes = 60,
+        )
+        sixtyMinuteManager.start()
+        assertEquals(60 * 60_000L, sixtyMinuteScheduler.nextDelayMs!!)
     }
 
     @Test
     fun lonelinessModesUseOnlyTheirSpecifiedContentAndFrequency() {
-        assertMode(LonelinessMode.FASTER, 150_000L..450_000L) {
+        assertMode(LonelinessMode.FASTER, 15 * 60_000L..15 * 60_000L) {
             it in SelfTalkManager.messagesFor(DayPeriod.DAY)
         }
-        assertMode(LonelinessMode.SIGH, 300_000L..900_000L) { it == "…" }
-        assertMode(LonelinessMode.SHORT, 600_000L..1_800_000L) { it == "…" || it == "在吗" }
-        assertMode(LonelinessMode.SLEEPY, 300_000L..900_000L) { it == "zzZ" }
+        assertMode(LonelinessMode.SIGH, 30 * 60_000L..30 * 60_000L) { it == "…" }
+        assertMode(LonelinessMode.SHORT, 60 * 60_000L..60 * 60_000L) { it == "…" || it == "在吗" }
+        assertMode(LonelinessMode.SLEEPY, 30 * 60_000L..30 * 60_000L) { it == "zzZ" }
     }
 
     @Test

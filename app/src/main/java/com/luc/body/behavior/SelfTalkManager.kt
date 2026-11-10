@@ -21,11 +21,10 @@ class SelfTalkManager(
     private val scheduler: DelayScheduler,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val random: Random = Random.Default,
-    frequencyMinutes: Int = 10,
+    frequencyMinutes: Int = 30,
     enabled: Boolean = true,
 ) : AutoCloseable {
-    private val minDelayMs = (frequencyMinutes - 5).coerceIn(5, 30) * 60_000L
-    private val maxDelayMs = (frequencyMinutes + 5).coerceIn(5, 30) * 60_000L
+    private val baseDelayMs = frequencyMinutes.coerceIn(30, 60) * 60_000L
     private var enabled = enabled
     private var remotePresent = false
     private var closed = false
@@ -79,7 +78,6 @@ class SelfTalkManager(
 
     private fun scheduleNext() {
         val callbackGeneration = ++generation
-        val baseDelayMs = random.nextLong(minDelayMs, maxDelayMs + 1)
         val delayMs = when (lonelinessMode) {
             LonelinessMode.NORMAL,
             LonelinessMode.SIGH,
@@ -103,7 +101,9 @@ class SelfTalkManager(
             coordinator.showBubble(message)
             ownBubbleVisible = true
             bubbleTask?.cancel()
-            bubbleTask = scheduler.schedule(StateCoordinator.bubbleDurationMs(message)) {
+            bubbleTask = scheduler.schedule(
+                StateCoordinator.bubbleDurationMs(message, FIXED_BUBBLE_DURATION_SECONDS),
+            ) {
                 if (closed || !ownBubbleVisible) return@schedule
                 ownBubbleVisible = false
                 bubbleTask = null
@@ -132,6 +132,7 @@ class SelfTalkManager(
     }
 
     companion object {
+        private const val FIXED_BUBBLE_DURATION_SECONDS = 10
         private val MORNING_MESSAGES = listOf(
             "早啊",
             "起床了吗",

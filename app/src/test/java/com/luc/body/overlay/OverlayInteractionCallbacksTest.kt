@@ -33,7 +33,6 @@ class OverlayInteractionCallbacksTest {
             onPoke = { events += "poke" },
             onPetHead = { events += "pet-head" },
             onHide = { events += "hide" },
-            onSettings = { events += "settings" },
         )
         val callbacks = OverlayInteractionCallbacks(
             onTap = { events += "tap:$it" },
@@ -44,7 +43,6 @@ class OverlayInteractionCallbacksTest {
                 actions.onPoke()
                 actions.onPetHead()
                 actions.onHide()
-                actions.onSettings()
             },
             menuActions = menu,
             onDragStarted = { events += "drag:$it" },
@@ -66,7 +64,7 @@ class OverlayInteractionCallbacksTest {
         assertEquals(
             listOf(
                 "tap:100", "stuck-tap:200", "double:300:500", "hearts",
-                "poke", "pet-head", "hide", "settings",
+                "poke", "pet-head", "hide",
                 "drag:true", "stuck:false", "fling:LEFT:DIZZY",
                 "fling-stuck:true",
             ),

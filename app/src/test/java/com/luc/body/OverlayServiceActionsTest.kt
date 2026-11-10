@@ -16,5 +16,9 @@ class OverlayServiceActionsTest {
         )
         assertEquals(5, actions.distinct().size)
         assertTrue(actions.all { it.startsWith("com.luc.body.action.") })
+        assertEquals(
+            "com.luc.body.extra.RESET_POSITION_ON_SHOW",
+            OverlayServiceActions.EXTRA_RESET_POSITION_ON_SHOW,
+        )
     }
 }

@@ -81,17 +81,23 @@ class StateCoordinator(
         if (newest != null && !instant.isAfter(newest)) return
 
         val normalized = state.copy(bubbleText = normalizeBubbleText(state.bubbleText))
+        val wasEmotionMetricsInitialized = emotionMetricsInitialized
         val incomingMetrics = EmotionMetrics.fromRemote(normalized)
         val mergedMetrics = incomingMetrics?.let { update ->
             latestEmotionMetrics?.mergeNonNull(update) ?: update
         }
         val changedMetrics = mergedMetrics?.takeIf {
-            emotionMetricsInitialized && it != latestEmotionMetrics
+            wasEmotionMetricsInitialized && it != latestEmotionMetrics
         }
         if (mergedMetrics != null) latestEmotionMetrics = mergedMetrics
+        val metricsToDisplay = when {
+            !wasEmotionMetricsInitialized -> null
+            normalized.bubbleText != null -> latestEmotionMetrics
+            else -> changedMetrics
+        }
         emotionMetricsInitialized = true
         newestIsoRevision = instant
-        applyRemoteState(normalized, changedMetrics)
+        applyRemoteState(normalized, metricsToDisplay)
     }
 
     fun clearRemoteState() {
@@ -178,7 +184,7 @@ class StateCoordinator(
     fun onLocalTap() {
         requireOwnerThread()
         if (closed) return
-        startLocalReaction(localExpression(), localBubbleText, BubbleStyle.NORMAL)
+        startLocalReaction(localExpression(), localBubbleText, BubbleStyle.SHOUT)
     }
 
     fun onDoubleTap(bubbleText: String? = localBubbleText) {
@@ -186,7 +192,7 @@ class StateCoordinator(
     }
 
     fun onStuckTap(bubbleText: String? = localBubbleText) {
-        startLocalReaction(Expression.STUCK_TAP, bubbleText, BubbleStyle.NORMAL)
+        startLocalReaction(Expression.STUCK_TAP, bubbleText, BubbleStyle.SHOUT)
     }
 
     fun startLocalReaction(
@@ -325,7 +331,7 @@ class StateCoordinator(
         dragCandidate = null
     }
 
-    private fun applyRemoteState(state: RemoteState, changedMetrics: EmotionMetrics?) {
+    private fun applyRemoteState(state: RemoteState, metricsToDisplay: EmotionMetrics?) {
         cancelLocalReaction()
         cancelRemoteExpiry()
         latestRemoteState = state
@@ -334,8 +340,8 @@ class StateCoordinator(
         clearActiveEmotionMetrics()
         val text = state.bubbleText
         val durationMs = bubbleDurationMs(text.orEmpty(), bubbleBaseSeconds)
-        if (changedMetrics != null) {
-            installEmotionMetrics(changedMetrics, durationMs, state.updatedAt)
+        if (metricsToDisplay != null) {
+            installEmotionMetrics(metricsToDisplay, durationMs, state.updatedAt)
         }
         if (text == null) {
             renderCurrent()

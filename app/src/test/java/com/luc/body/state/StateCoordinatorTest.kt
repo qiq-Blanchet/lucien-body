@@ -111,6 +111,8 @@ class StateCoordinatorTest {
             }
             assertEquals(expectedReaction, sink.states.last().expression)
             assertTrue(sink.states.last().bubbleText?.isNotBlank() == true)
+            val expectedStyle = if (index == 1) BubbleStyle.LOVE else BubbleStyle.SHOUT
+            assertEquals(expectedStyle, sink.states.last().bubbleStyle)
             scheduler.advanceBy(9_999)
             assertEquals("reaction $index ended early", expectedReaction, sink.states.last().expression)
             assertTrue(sink.states.last().bubbleText?.isNotBlank() == true)
@@ -382,6 +384,61 @@ class StateCoordinatorTest {
         assertNull(sink.states.last().emotionMetrics)
         coordinator.showLatestEmotionMetrics()
         assertEquals(metrics, sink.states.last().emotionMetrics)
+    }
+
+    @Test
+    fun initialRestoredRemoteBubbleDoesNotAutoDisplayEmotionMetrics() {
+        val sink = RecordingSink()
+        val coordinator = coordinator(sink, bubbleBaseDurationSeconds = 10)
+        val metrics = EmotionMetrics(valence = 0.78, arousal = 0.42, heat = 7)
+
+        coordinator.onRemoteState(
+            remote(
+                Expression.HAPPY,
+                text = "restored text",
+                revision = REVISION_0,
+                valence = metrics.valence,
+                arousal = metrics.arousal,
+                heat = metrics.heat,
+            ),
+        )
+
+        assertEquals("restored text", sink.states.last().bubbleText)
+        assertNull(sink.states.last().emotionMetrics)
+    }
+
+    @Test
+    fun newerRemoteBubbleDisplaysCachedEmotionMetricsEvenWhenValuesDoNotChange() {
+        val sink = RecordingSink()
+        val scheduler = FakeScheduler()
+        val coordinator = coordinator(sink, scheduler, bubbleBaseDurationSeconds = 10)
+        val metrics = EmotionMetrics(valence = 0.78, arousal = 0.42, heat = 7)
+        coordinator.onRemoteState(
+            remote(
+                text = "restored text",
+                revision = REVISION_0,
+                valence = metrics.valence,
+                arousal = metrics.arousal,
+                heat = metrics.heat,
+            ),
+        )
+        scheduler.advanceBy(10_000)
+
+        coordinator.onRemoteState(
+            remote(
+                Expression.HAPPY,
+                text = "new text",
+                revision = REVISION_1,
+            ),
+        )
+
+        assertEquals("new text", sink.states.last().bubbleText)
+        assertEquals(metrics, sink.states.last().emotionMetrics)
+        scheduler.advanceBy(9_999)
+        assertEquals(metrics, sink.states.last().emotionMetrics)
+        scheduler.advanceBy(1)
+        assertNull(sink.states.last().bubbleText)
+        assertNull(sink.states.last().emotionMetrics)
     }
 
     @Test

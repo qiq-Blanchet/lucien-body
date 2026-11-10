@@ -1,0 +1,13 @@
+<resources>
+    <style name="Theme.Luc" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:colorAccent">@color/luc_accent</item>
+        <item name="android:navigationBarColor">@color/luc_background</item>
+        <item name="android:statusBarColor">@color/luc_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowSplashScreenBackground">@color/luc_background</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/luc_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+</resources>

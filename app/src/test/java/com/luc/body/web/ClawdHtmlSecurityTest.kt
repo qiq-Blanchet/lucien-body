@@ -48,12 +48,17 @@ class ClawdHtmlSecurityTest {
     }
 
     @Test
-    fun `bubble supports sleepy style without a border or tail`() {
+    fun `selected whisper and sleepy styles have no border tail or moon decoration`() {
         val html = File("src/main/assets/bubble.html").readText()
         val css = File("src/main/assets/css/bubble.css").readText()
 
         assertTrue(html.contains("\"sleepy\""))
+        assertTrue(css.contains(".bubble--whisper"))
+        assertTrue(css.contains("#DCCAE8"))
+        assertTrue(css.contains("#745777"))
         assertTrue(css.contains(".bubble--sleepy"))
+        assertTrue(css.contains("#EEF0FA"))
+        assertFalse(css.contains("☾"))
         assertFalse(css.contains("border:"))
         assertFalse(css.contains("font-weight:"))
         assertFalse(css.contains("border-bottom"))

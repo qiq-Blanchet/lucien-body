@@ -37,6 +37,7 @@ import com.luc.body.overlay.MiniMenuActions
 import com.luc.body.overlay.OverlayController
 import com.luc.body.overlay.OverlayGeometry
 import com.luc.body.overlay.OverlayInteractionCallbacks
+import com.luc.body.state.BubbleStyle
 import com.luc.body.state.Cancelable
 import com.luc.body.state.DelayScheduler
 import com.luc.body.state.Expression
@@ -111,7 +112,11 @@ class OverlayService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        val resetPositionOnShow = intent?.action == OverlayServiceActions.ACTION_SHOW &&
+            intent.getBooleanExtra(OverlayServiceActions.EXTRA_RESET_POSITION_ON_SHOW, false)
+        if (resetPositionOnShow) prefs.resetPosition()
         if (!ensureRuntimeStarted()) return START_NOT_STICKY
+        if (resetPositionOnShow) overlayController?.resetPosition()
         setOverlayVisible(true)
         return START_STICKY
     }
@@ -135,19 +140,13 @@ class OverlayService : Service() {
             onDoubleTap = ::handleDoubleTap,
             onHeartParticles = { controller.showHeartParticles() },
             onLongPressMenu = { actions ->
-                controller.showMiniMenu(actions)
                 coordinator.showLatestEmotionMetrics()
+                controller.showMiniMenu(actions)
             },
             menuActions = MiniMenuActions(
                 onPoke = { handleTap(fromStuck = false) },
                 onPetHead = ::handlePetHead,
                 onHide = { sendServiceAction(OverlayServiceActions.ACTION_HIDE) },
-                onSettings = {
-                    startActivity(
-                        Intent(this, MainActivity::class.java)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                    )
-                },
             ),
             onDragStarted = { fromStuck ->
                 recordInteraction()
@@ -165,8 +164,8 @@ class OverlayService : Service() {
         controller = OverlayController(
             context = this,
             windowManager = getSystemService(WINDOW_SERVICE) as WindowManager,
-            geometry = OverlayGeometry(density, prefs.petSizeDp),
-            petSizeDp = prefs.petSizeDp,
+            geometry = OverlayGeometry(density, FIXED_PET_SIZE_DP),
+            petSizeDp = FIXED_PET_SIZE_DP,
             initialPosition = prefs.savedPosition(),
             onPositionSettled = prefs::savePosition,
             interactions = interactions,
@@ -175,7 +174,7 @@ class OverlayService : Service() {
             uiSink = controller,
             scheduler = scheduler,
             localBubbleText = "在呢。",
-            bubbleBaseDurationSeconds = prefs.bubbleDurationSeconds,
+            bubbleBaseDurationSeconds = FIXED_BUBBLE_DURATION_SECONDS,
             localExpression = { Expression.HAPPY },
         )
 
@@ -294,7 +293,7 @@ class OverlayService : Service() {
     private fun handlePetHead() {
         val coordinator = stateCoordinator ?: return
         recordInteraction()
-        coordinator.startLocalReaction(Expression.HAPPY, "被摸了 ꒪¯꒳¯꒪")
+        coordinator.startLocalReaction(Expression.HAPPY, "被摸了 ꒪¯꒳¯꒪", BubbleStyle.LOVE)
         enqueueEvent("pet_head")
     }
 
@@ -430,6 +429,8 @@ class OverlayService : Service() {
     }
 
     private companion object {
+        const val FIXED_PET_SIZE_DP = 90
+        const val FIXED_BUBBLE_DURATION_SECONDS = 10
         const val CHANNEL_ID = "luc_overlay"
         const val NOTIFICATION_ID = 1
         const val REQUEST_CONTENT = 10

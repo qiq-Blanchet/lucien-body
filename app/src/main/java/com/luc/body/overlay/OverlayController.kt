@@ -2,21 +2,24 @@ package com.luc.body.overlay
 
 import android.content.Context
 import android.content.ComponentCallbacks
+import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.graphics.Point
 import android.os.Build
+import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.webkit.WebView
-import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.PopupWindow
 import android.widget.OverScroller
+import android.widget.TextView
 import com.luc.body.gesture.GestureClassifier
 import com.luc.body.gesture.FlingGesture
 import com.luc.body.gesture.PetGestureController
@@ -42,7 +45,8 @@ class OverlayController(
     private var metricsParams: WindowManager.LayoutParams? = null
     private var placementTracker: OverlayPlacementTracker? = null
     private var componentCallbacks: ComponentCallbacks? = null
-    private var popupWindow: PopupWindow? = null
+    private var menuView: View? = null
+    private var menuParams: WindowManager.LayoutParams? = null
     private var flingScroller: OverScroller? = null
     private var flingRunnable: Runnable? = null
     private var savedPosition = initialPosition
@@ -120,40 +124,103 @@ class OverlayController(
     }
 
     fun showMiniMenu(actions: MiniMenuActions) {
-        val anchor = petView ?: return
-        popupWindow?.dismiss()
+        val tracker = placementTracker ?: return
+        val petPlacement = tracker.currentPlacement ?: return
+        dismissMiniMenu()
         val density = context.resources.displayMetrics.density
+        val content = createMiniMenuContent(actions, density)
+        val menuPlacement = geometry.miniMenuPlacement(
+            petX = petPlacement.petX,
+            petY = petPlacement.petY,
+            bounds = safeBounds(),
+            stuckEdge = tracker.stuckEdge,
+        )
+        val params = OverlayWindowSpec.menu().toLayoutParams(density).apply {
+            x = menuPlacement.x
+            y = menuPlacement.y
+        }
+        content.elevation = 7 * density
+        content.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_OUTSIDE) {
+                dismissMiniMenu()
+                true
+            } else {
+                false
+            }
+        }
+        menuView = content
+        menuParams = params
+        try {
+            windowManager.addView(content, menuParams)
+        } catch (error: RuntimeException) {
+            menuView = null
+            menuParams = null
+            throw error
+        }
+    }
+
+    private fun createMiniMenuContent(actions: MiniMenuActions, density: Float): LinearLayout {
+        val background = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(Color.rgb(255, 247, 250), Color.rgb(255, 237, 243)),
+        ).apply {
+            cornerRadius = 11 * density
+        }
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding((8 * density).toInt(), (6 * density).toInt(), (8 * density).toInt(), (6 * density).toInt())
-            setBackgroundColor(Color.WHITE)
+            setPadding(
+                (8 * density).toInt(),
+                (8 * density).toInt(),
+                (8 * density).toInt(),
+                (8 * density).toInt(),
+            )
+            this.background = background
         }
         listOf(
             "戳一下" to actions.onPoke,
             "摸摸头" to actions.onPetHead,
             "隐藏" to actions.onHide,
-            "设置" to actions.onSettings,
         ).forEach { (label, action) ->
-            content.addView(Button(context).apply {
-                text = label
-                isAllCaps = false
-                setOnClickListener {
-                    popupWindow?.dismiss()
-                    action()
-                }
-            })
+            content.addView(miniMenuButton(label, action, density))
         }
-        popupWindow = PopupWindow(
-            content,
-            (132 * density).toInt(),
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            true,
-        ).apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            isOutsideTouchable = true
-            setOnDismissListener { if (popupWindow === this) popupWindow = null }
-            showAsDropDown(anchor, 0, -(petSizeDp * density).toInt(), Gravity.CENTER_HORIZONTAL)
+        return content
+    }
+
+    private fun miniMenuButton(label: String, action: () -> Unit, density: Float): TextView {
+        val tile = GradientDrawable().apply {
+            setColor(Color.argb(58, 247, 184, 202))
+            cornerRadius = 7 * density
         }
+        return TextView(context).apply {
+            text = label
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(128, 80, 97))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            background = RippleDrawable(
+                ColorStateList.valueOf(Color.argb(54, 236, 128, 159)),
+                tile,
+                null,
+            )
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ).apply {
+                val verticalMargin = (2 * density).toInt()
+                setMargins(0, verticalMargin, 0, verticalMargin)
+            }
+            setOnClickListener {
+                dismissMiniMenu()
+                action()
+            }
+        }
+    }
+
+    private fun dismissMiniMenu() {
+        val menu = menuView ?: return
+        removeViewIgnoringAlreadyRemoved(menu)
+        menuView = null
+        menuParams = null
     }
 
     private fun reclampToCurrentBounds() {
@@ -175,7 +242,7 @@ class OverlayController(
         if (pet == null && bubble == null && metrics == null) return
         pet?.setOnTouchListener(null)
         stopFling()
-        popupWindow?.dismiss()
+        dismissMiniMenu()
         pet?.let(::removeViewIgnoringAlreadyRemoved)
         metrics?.let(::removeViewIgnoringAlreadyRemoved)
         bubble?.let(::removeViewIgnoringAlreadyRemoved)
@@ -216,7 +283,8 @@ class OverlayController(
         bubbleParams = null
         metricsParams = null
         placementTracker = null
-        popupWindow = null
+        menuView = null
+        menuParams = null
         lastVisibleState = null
     }
 

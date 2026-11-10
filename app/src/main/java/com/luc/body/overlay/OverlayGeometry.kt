@@ -27,6 +27,12 @@ data class MetricsPlacementPx(
     val y: Int,
 )
 
+data class MiniMenuPlacementPx(
+    val x: Int,
+    val y: Int,
+    val belowPet: Boolean,
+)
+
 enum class SnapEdge { LEFT, RIGHT }
 
 data class SnapResult(
@@ -41,11 +47,14 @@ class OverlayGeometry(
     val petSizePx = dpToPx(petSizeDp, density)
     private val bubbleWidthPx = dpToPx(BUBBLE_WIDTH_DP, density)
     private val bubbleHeightPx = dpToPx(BUBBLE_HEIGHT_DP, density)
-    private val metricsWidthPx = dpToPx(METRICS_WINDOW_WIDTH_DP, density)
-    private val metricsHeightPx = dpToPx(METRICS_WINDOW_HEIGHT_DP, density)
-    private val metricsPanelInsetPx = dpToPx(METRICS_PANEL_INSET_DP, density)
-    private val metricsGapPx = dpToPx(METRICS_GAP_DP, density)
-    private val edgeMarginPx = dpToPx(EDGE_MARGIN_DP, density)
+    private val metricsWidthPx = dpToPx(EMOTION_METRICS_WIDTH_DP, density)
+    private val metricsHeightPx = dpToPx(EMOTION_METRICS_HEIGHT_DP, density)
+    private val metricsPanelInsetPx = (EMOTION_METRICS_PANEL_INSET_DP * density).roundToInt()
+    private val metricsGapPx = dpToPx(EMOTION_METRICS_GAP_DP, density)
+    val miniMenuWidthPx = dpToPx(MINI_MENU_WIDTH_DP, density)
+    val miniMenuHeightPx = dpToPx(MINI_MENU_HEIGHT_DP, density)
+    private val miniMenuOverlapPx = dpToPx(MINI_MENU_OVERLAP_DP, density)
+    private val miniMenuAboveVisibleOffsetPx = dpToPx(MINI_MENU_ABOVE_VISIBLE_OFFSET_DP, density)
     private val snapThresholdPx = SNAP_THRESHOLD_DP * density
     // The source sprites use a 45-unit viewBox with roughly 15 units of side padding.
     private val horizontalSnapOverhangPx = petSizePx / 3
@@ -56,11 +65,15 @@ class OverlayGeometry(
         require(density > 0f) { "density must be positive" }
     }
 
-    fun initialPlacement(bounds: SafeBoundsPx): OverlayPlacementPx = movePet(
-        petX = bounds.right - petSizePx - edgeMarginPx,
-        petY = bounds.bottom - petSizePx - edgeMarginPx,
-        bounds = bounds,
-    )
+    fun initialPlacement(bounds: SafeBoundsPx): OverlayPlacementPx {
+        val maximumPetX = maxCoordinate(bounds.left, bounds.right, petSizePx)
+        val maximumPetY = maxCoordinate(bounds.top, bounds.bottom, petSizePx)
+        return movePet(
+            petX = bounds.left + (maximumPetX - bounds.left) / 2,
+            petY = bounds.top + (maximumPetY - bounds.top) / 4,
+            bounds = bounds,
+        )
+    }
 
     fun movePet(petX: Int, petY: Int, bounds: SafeBoundsPx): OverlayPlacementPx {
         val clampedPetX = petX.coerceIn(bounds.left, maxCoordinate(bounds.left, bounds.right, petSizePx))
@@ -94,6 +107,8 @@ class OverlayGeometry(
             visibleLeft - bounds.left >= bounds.right - visibleRight -> leftX
             else -> rightX
         }
+        // Keep the approved 0.1.18 alignment so the menu and metrics panel do
+        // not overlap when they are shown together.
         val desiredY = petY + (petSizePx - metricsHeightPx) / 2
 
         return MetricsPlacementPx(
@@ -102,6 +117,36 @@ class OverlayGeometry(
                 bounds.top,
                 maxCoordinate(bounds.top, bounds.bottom, metricsHeightPx),
             ),
+        )
+    }
+
+    fun miniMenuPlacement(
+        petX: Int,
+        petY: Int,
+        bounds: SafeBoundsPx,
+        stuckEdge: SnapEdge?,
+    ): MiniMenuPlacementPx {
+        val maximumX = maxCoordinate(bounds.left, bounds.right, miniMenuWidthPx)
+        val centeredX = petX + (petSizePx - miniMenuWidthPx) / 2
+        val desiredX = when (stuckEdge) {
+            SnapEdge.LEFT -> bounds.left
+            SnapEdge.RIGHT -> maximumX
+            null -> centeredX
+        }
+        val belowY = petY + petSizePx - miniMenuOverlapPx
+        // The SVG canvas has transparent space above the visible crab. Extending
+        // the popup into that space keeps the panel visually near its head.
+        val aboveY = petY - miniMenuHeightPx + miniMenuAboveVisibleOffsetPx
+        val canPlaceBelow = belowY + miniMenuHeightPx <= bounds.bottom
+        val canPlaceAbove = aboveY >= bounds.top
+        val belowPet = canPlaceBelow || !canPlaceAbove
+        val maximumY = maxCoordinate(bounds.top, bounds.bottom, miniMenuHeightPx)
+        val desiredY = if (belowPet) belowY else aboveY
+
+        return MiniMenuPlacementPx(
+            x = desiredX.coerceIn(bounds.left, maximumX),
+            y = desiredY.coerceIn(bounds.top, maximumY),
+            belowPet = belowPet,
         )
     }
 
@@ -169,11 +214,10 @@ class OverlayGeometry(
         const val DEFAULT_PET_SIZE_DP = 90
         const val BUBBLE_WIDTH_DP = 180
         const val BUBBLE_HEIGHT_DP = 120
-        const val METRICS_WINDOW_WIDTH_DP = 112
-        const val METRICS_WINDOW_HEIGHT_DP = 106
-        const val METRICS_PANEL_INSET_DP = 4
-        const val METRICS_GAP_DP = 20
-        const val EDGE_MARGIN_DP = 16
+        const val MINI_MENU_WIDTH_DP = 88
+        const val MINI_MENU_HEIGHT_DP = 112
+        const val MINI_MENU_OVERLAP_DP = 4
+        const val MINI_MENU_ABOVE_VISIBLE_OFFSET_DP = 37
         const val SNAP_THRESHOLD_DP = 4f
     }
 }

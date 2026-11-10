@@ -19,14 +19,43 @@ class OverlayGeometryTest {
     }
 
     @Test
-    fun initialPlacementUsesSixteenDpBottomRightMarginInsideNonZeroSafeBounds() {
+    fun initialPlacementUsesTheHorizontalCenterAndUpperQuarterOfNonZeroSafeBounds() {
         val placement = geometry.initialPlacement(SafeBoundsPx(50, 100, 1050, 2000))
 
-        assertEquals(838, placement.petX)
-        assertEquals(1_788, placement.petY)
-        assertEquals(690, placement.bubbleX)
-        assertEquals(1_548, placement.bubbleY)
+        assertEquals(460, placement.petX)
+        assertEquals(530, placement.petY)
+        assertEquals(370, placement.bubbleX)
+        assertEquals(290, placement.bubbleY)
         assertFalse(placement.bubbleBelowPet)
+    }
+
+    @Test
+    fun `mini menu sits under the pet feet and remains centered in open space`() {
+        val geometry = OverlayGeometry(density = 1f)
+
+        val menu = geometry.miniMenuPlacement(500, 400, SafeBoundsPx(0, 0, 1_000, 1_000), null)
+
+        assertEquals(88, geometry.miniMenuWidthPx)
+        assertEquals(112, geometry.miniMenuHeightPx)
+        assertEquals(MiniMenuPlacementPx(x = 501, y = 486, belowPet = true), menu)
+    }
+
+    @Test
+    fun `mini menu moves above a pet near the bottom`() {
+        val geometry = OverlayGeometry(density = 1f)
+
+        val menu = geometry.miniMenuPlacement(500, 910, SafeBoundsPx(0, 0, 1_000, 1_000), null)
+
+        assertEquals(MiniMenuPlacementPx(x = 501, y = 835, belowPet = false), menu)
+    }
+
+    @Test
+    fun `mini menu hugs the matching safe side for snapped pets`() {
+        val geometry = OverlayGeometry(density = 1f)
+        val bounds = SafeBoundsPx(0, 0, 1_000, 1_000)
+
+        assertEquals(0, geometry.miniMenuPlacement(-30, 400, bounds, SnapEdge.LEFT).x)
+        assertEquals(912, geometry.miniMenuPlacement(940, 400, bounds, SnapEdge.RIGHT).x)
     }
 
     @Test
@@ -105,7 +134,7 @@ class OverlayGeometryTest {
 
         val metrics = geometry.metricsPlacement(500, 400, SafeBoundsPx(0, 0, 1_000, 1_000))
 
-        assertEquals(MetricsPlacementPx(x = 402, y = 392), metrics)
+        assertEquals(MetricsPlacementPx(x = 424, y = 401), metrics)
     }
 
     @Test
@@ -117,7 +146,7 @@ class OverlayGeometryTest {
         val metrics = geometry.metricsPlacement(pet.petX, pet.petY, bounds)
 
         assertEquals(0, pet.petX)
-        assertEquals(MetricsPlacementPx(x = 76, y = 392), metrics)
+        assertEquals(MetricsPlacementPx(x = 78, y = 401), metrics)
     }
 
     @Test
@@ -126,7 +155,7 @@ class OverlayGeometryTest {
         val bounds = SafeBoundsPx(0, 100, 1_000, 400)
         val pet = geometry.movePet(500, 100, bounds)
 
-        assertEquals(MetricsPlacementPx(x = 402, y = 100), geometry.metricsPlacement(pet.petX, pet.petY, bounds))
+        assertEquals(MetricsPlacementPx(x = 424, y = 101), geometry.metricsPlacement(pet.petX, pet.petY, bounds))
         assertEquals(500, pet.petX)
         assertEquals(100, pet.petY)
         assertEquals(455, pet.bubbleX)

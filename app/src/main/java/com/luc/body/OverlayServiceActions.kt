@@ -6,4 +6,5 @@ object OverlayServiceActions {
     const val ACTION_EXIT = "com.luc.body.action.EXIT"
     const val ACTION_RESET_POSITION = "com.luc.body.action.RESET_POSITION"
     const val ACTION_RELOAD = "com.luc.body.action.RELOAD"
+    const val EXTRA_RESET_POSITION_ON_SHOW = "com.luc.body.extra.RESET_POSITION_ON_SHOW"
 }

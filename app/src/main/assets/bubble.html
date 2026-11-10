@@ -15,14 +15,27 @@
       show(text, style, revision) {
         const allowed = new Set(["normal", "whisper", "shout", "love", "sleepy"]);
         const bubble = document.getElementById("bubble");
-        bubble.textContent = String(text).slice(0, 120);
-        bubble.className = `bubble bubble--${allowed.has(style) ? style : "normal"}`;
-        bubble.dataset.revision = revision;
+        const safeStyle = allowed.has(style) ? style : "normal";
+        const normalizedText = String(text).slice(0, 120);
+        const normalizedRevision = String(revision);
+        if (
+          bubble.classList.contains("bubble--visible") &&
+          bubble.dataset.revision === normalizedRevision &&
+          bubble.dataset.style === safeStyle &&
+          bubble.textContent === normalizedText
+        ) return;
+        bubble.textContent = normalizedText;
+        bubble.className = `bubble bubble--${safeStyle}`;
+        bubble.dataset.revision = normalizedRevision;
+        bubble.dataset.style = safeStyle;
         void bubble.offsetWidth;
         bubble.classList.add("bubble--visible");
       },
       hide() {
-        document.getElementById("bubble").className = "bubble";
+        const bubble = document.getElementById("bubble");
+        bubble.className = "bubble";
+        delete bubble.dataset.revision;
+        delete bubble.dataset.style;
       }
     };
   </script>

@@ -53,12 +53,24 @@ data class OverlayWindowSpec(
         )
 
         fun metrics(): OverlayWindowSpec = OverlayWindowSpec(
-            widthDp = 112,
-            heightDp = 106,
+            widthDp = EMOTION_METRICS_WIDTH_DP,
+            heightDp = EMOTION_METRICS_HEIGHT_DP,
             touchable = false,
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            pixelFormat = PixelFormat.TRANSLUCENT,
+            gravity = Gravity.TOP or Gravity.START,
+        )
+
+        fun menu(): OverlayWindowSpec = OverlayWindowSpec(
+            widthDp = 88,
+            heightDp = 112,
+            touchable = true,
+            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             pixelFormat = PixelFormat.TRANSLUCENT,
             gravity = Gravity.TOP or Gravity.START,

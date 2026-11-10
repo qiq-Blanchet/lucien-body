@@ -1,7 +1,6 @@
 package com.luc.body
 
 import android.Manifest
-import android.app.AlertDialog
 import android.app.AppOpsManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -20,45 +19,56 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.addCallback
 import androidx.core.content.ContextCompat
 import com.luc.body.util.PrefsManager
 
 class MainActivity : ComponentActivity() {
     private lateinit var prefs: PrefsManager
-    private var permissionGuideStep = initialPermissionGuideStep()
-    private var permissionDialogShowing = false
-    private var returningFromPermissionSettings = false
-
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) {
-        updatePermissionStatus()
-        startOverlayServiceFromVisibleClick()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         prefs = PrefsManager(this)
-        permissionGuideStep = savedInstanceState?.getInt(STATE_PERMISSION_GUIDE_STEP) ?: 0
-
         bindSettings()
 
-        findViewById<Button>(R.id.start_button).setOnClickListener { startFromVisibleClick() }
-        findViewById<Button>(R.id.app_details_button).apply {
-            visibility = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) View.VISIBLE else View.GONE
+        val settingsOverlay = findViewById<View>(R.id.settings_overlay)
+        findViewById<View>(R.id.settings_button).setOnClickListener {
+            settingsOverlay.visibility = View.VISIBLE
+        }
+        findViewById<View>(R.id.settings_close_button).setOnClickListener {
+            settingsOverlay.visibility = View.GONE
+        }
+        settingsOverlay.setOnClickListener { settingsOverlay.visibility = View.GONE }
+        findViewById<View>(R.id.settings_panel).setOnClickListener { /* Keep taps inside the panel. */ }
+        onBackPressedDispatcher.addCallback(this) {
+            if (settingsOverlay.visibility == View.VISIBLE) {
+                settingsOverlay.visibility = View.GONE
+            } else {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        }
+
+        findViewById<View>(R.id.start_button).setOnClickListener { startFromVisibleClick() }
+        val showRestrictedSettings = Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA
+        findViewById<View>(R.id.restricted_settings_container).visibility =
+            if (showRestrictedSettings) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.app_details_button).setOnClickListener { openAppDetailsSettings() }
+        findViewById<View>(R.id.settings_app_details_button).apply {
+            visibility = if (showRestrictedSettings) View.VISIBLE else View.GONE
             setOnClickListener { openAppDetailsSettings() }
         }
-        findViewById<TextView>(R.id.restricted_settings_help).visibility =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) View.VISIBLE else View.GONE
-        findViewById<Button>(R.id.overlay_permission_button).setOnClickListener { openOverlaySettings() }
-        findViewById<Button>(R.id.usage_permission_button).setOnClickListener { openUsageSettings() }
-        findViewById<Button>(R.id.stop_button).setOnClickListener {
+        findViewById<Button>(R.id.permission_help_button).setOnClickListener {
+            openAppDetailsSettings()
+        }
+        findViewById<View>(R.id.overlay_permission_button).setOnClickListener { openOverlaySettings() }
+        findViewById<View>(R.id.usage_permission_button).setOnClickListener { openUsageSettings() }
+        findViewById<View>(R.id.stop_button).setOnClickListener {
             stopService(Intent(this, OverlayService::class.java))
         }
-        findViewById<Button>(R.id.save_settings_button).setOnClickListener { saveSettings() }
-        findViewById<Button>(R.id.reset_position_button).setOnClickListener {
+        findViewById<View>(R.id.save_settings_button).setOnClickListener { saveSettings() }
+        findViewById<View>(R.id.reset_position_button).setOnClickListener {
             prefs.resetPosition()
             ContextCompat.startForegroundService(
                 this,
@@ -66,47 +76,16 @@ class MainActivity : ComponentActivity() {
             )
             Toast.makeText(this, R.string.position_reset, Toast.LENGTH_SHORT).show()
         }
-
-        findViewById<android.view.View>(android.R.id.content).post { showNextPermissionGuide() }
     }
 
     override fun onResume() {
         super.onResume()
         updatePermissionStatus()
-        if (returningFromPermissionSettings) {
-            returningFromPermissionSettings = false
-            findViewById<android.view.View>(android.R.id.content).post { showNextPermissionGuide() }
-        }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        outState.putInt(STATE_PERMISSION_GUIDE_STEP, permissionGuideStep)
-        super.onSaveInstanceState(outState)
     }
 
     private fun startFromVisibleClick() {
         if (!Settings.canDrawOverlays(this)) {
-            showPermissionDialog(
-                title = R.string.overlay_permission_title,
-                message = R.string.overlay_permission_reason,
-                optional = false,
-                onContinue = ::openOverlaySettings,
-            )
-            return
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.notification_permission_title)
-                .setMessage(R.string.notification_permission_reason)
-                .setPositiveButton(R.string.permission_continue) { _, _ ->
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                .setNegativeButton(R.string.permission_not_now) { _, _ ->
-                    startOverlayServiceFromVisibleClick()
-                }
-                .show()
+            openOverlaySettings()
             return
         }
         startOverlayServiceFromVisibleClick()
@@ -115,7 +94,9 @@ class MainActivity : ComponentActivity() {
     private fun startOverlayServiceFromVisibleClick() {
         ContextCompat.startForegroundService(
             this,
-            Intent(this, OverlayService::class.java).setAction(OverlayServiceActions.ACTION_SHOW),
+            Intent(this, OverlayService::class.java)
+                .setAction(OverlayServiceActions.ACTION_SHOW)
+                .putExtra(OverlayServiceActions.EXTRA_RESET_POSITION_ON_SHOW, true),
         )
     }
 
@@ -125,13 +106,27 @@ class MainActivity : ComponentActivity() {
         val usage = hasUsageAccess()
         val notification = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        findViewById<TextView>(R.id.permission_status).text = getString(
-            R.string.permission_status,
-            getString(if (overlay) R.string.permission_granted else R.string.permission_required),
-            getString(if (battery) R.string.permission_granted else R.string.permission_optional),
-            getString(if (usage) R.string.permission_granted else R.string.permission_optional),
-            getString(if (notification) R.string.permission_granted else R.string.permission_optional),
-        )
+        updatePermissionRow(R.id.overlay_permission_status, overlay, required = true)
+        updatePermissionRow(R.id.battery_permission_status, battery, required = false)
+        updatePermissionRow(R.id.usage_permission_status, usage, required = false)
+        updatePermissionRow(R.id.notification_permission_status, notification, required = false)
+    }
+
+    private fun updatePermissionRow(viewId: Int, granted: Boolean, required: Boolean) {
+        val status = when {
+            granted -> R.string.permission_granted
+            required -> R.string.permission_required
+            else -> R.string.permission_not_granted
+        }
+        findViewById<TextView>(viewId).apply {
+            text = "● ${getString(status)}"
+            setTextColor(
+                ContextCompat.getColor(
+                    this@MainActivity,
+                    if (granted) R.color.luc_accent_strong else R.color.luc_text_muted,
+                ),
+            )
+        }
     }
 
     private fun bindSettings() {
@@ -146,18 +141,6 @@ class MainActivity : ComponentActivity() {
             R.id.self_talk_frequency_label,
             prefs.selfTalkFrequencyMinutes,
             R.string.self_talk_frequency,
-        )
-        bindSeekBar(
-            R.id.pet_size_seek,
-            R.id.pet_size_label,
-            prefs.petSizeDp,
-            R.string.pet_size_setting,
-        )
-        bindSeekBar(
-            R.id.bubble_duration_seek,
-            R.id.bubble_duration_label,
-            prefs.bubbleDurationSeconds,
-            R.string.bubble_duration_setting,
         )
     }
 
@@ -187,8 +170,6 @@ class MainActivity : ComponentActivity() {
         prefs.selfTalkFrequencyMinutes = findViewById<SeekBar>(R.id.self_talk_frequency_seek).progress
         prefs.lonelinessEnabled = findViewById<Switch>(R.id.loneliness_switch).isChecked
         prefs.appAwarenessEnabled = findViewById<Switch>(R.id.app_awareness_switch).isChecked
-        prefs.petSizeDp = findViewById<SeekBar>(R.id.pet_size_seek).progress
-        prefs.bubbleDurationSeconds = findViewById<SeekBar>(R.id.bubble_duration_seek).progress
         if (Settings.canDrawOverlays(this)) {
             ContextCompat.startForegroundService(
                 this,
@@ -196,99 +177,6 @@ class MainActivity : ComponentActivity() {
             )
         }
         Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun showNextPermissionGuide() {
-        if (permissionDialogShowing) return
-        when (permissionGuideStep) {
-            GUIDE_RESTRICTED_SETTINGS -> {
-                permissionGuideStep++
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-                    showRestrictedSettingsDialog()
-                } else {
-                    showNextPermissionGuide()
-                }
-            }
-
-            GUIDE_OVERLAY -> {
-                permissionGuideStep++
-                if (Settings.canDrawOverlays(this)) showNextPermissionGuide() else showPermissionDialog(
-                    title = R.string.overlay_permission_title,
-                    message = R.string.overlay_permission_reason,
-                    optional = false,
-                    onContinue = ::openOverlaySettings,
-                )
-            }
-
-            GUIDE_BATTERY -> {
-                permissionGuideStep++
-                if (isIgnoringBatteryOptimizations()) showNextPermissionGuide() else showPermissionDialog(
-                    title = R.string.battery_permission_title,
-                    message = R.string.battery_permission_reason,
-                    optional = true,
-                    onContinue = ::openBatterySettings,
-                )
-            }
-
-            GUIDE_USAGE -> {
-                permissionGuideStep++
-                if (hasUsageAccess()) showNextPermissionGuide() else showPermissionDialog(
-                    title = R.string.usage_permission_title,
-                    message = R.string.usage_permission_reason,
-                    optional = true,
-                    onContinue = ::openUsageSettings,
-                )
-            }
-        }
-    }
-
-    private fun showRestrictedSettingsDialog() {
-        permissionDialogShowing = true
-        AlertDialog.Builder(this)
-            .setTitle(R.string.restricted_settings_title)
-            .setMessage(R.string.restricted_settings_reason)
-            .setPositiveButton(R.string.open_app_details_button) { _, _ ->
-                permissionDialogShowing = false
-                openAppDetailsSettings()
-            }
-            .setNegativeButton(R.string.restricted_settings_done) { _, _ ->
-                permissionDialogShowing = false
-                showNextPermissionGuide()
-            }
-            .setOnCancelListener {
-                permissionDialogShowing = false
-                showNextPermissionGuide()
-            }
-            .show()
-    }
-
-    private fun showPermissionDialog(
-        title: Int,
-        message: Int,
-        optional: Boolean,
-        onContinue: () -> Unit,
-    ) {
-        permissionDialogShowing = true
-        AlertDialog.Builder(this)
-            .setTitle(title)
-            .setMessage(message)
-            .setPositiveButton(R.string.permission_continue) { _, _ ->
-                permissionDialogShowing = false
-                onContinue()
-            }
-            .apply {
-                if (optional) {
-                    setNegativeButton(R.string.permission_not_now) { _, _ ->
-                        permissionDialogShowing = false
-                        showNextPermissionGuide()
-                    }
-                }
-            }
-            .setOnCancelListener {
-                permissionDialogShowing = false
-                showNextPermissionGuide()
-            }
-            .show()
     }
 
     private fun openOverlaySettings() {
@@ -301,14 +189,6 @@ class MainActivity : ComponentActivity() {
             primaryIntent,
             appDetailsIntent(),
             Intent(Settings.ACTION_SETTINGS),
-        )
-    }
-
-    private fun openBatterySettings() {
-        openFirstAvailableSettings(
-            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, packageUri()),
-            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
-            appDetailsIntent(),
         )
     }
 
@@ -331,7 +211,6 @@ class MainActivity : ComponentActivity() {
     private fun openFirstAvailableSettings(vararg intents: Intent) {
         intents.forEach { intent ->
             try {
-                returningFromPermissionSettings = true
                 startActivity(intent)
                 return
             } catch (_: ActivityNotFoundException) {
@@ -340,7 +219,6 @@ class MainActivity : ComponentActivity() {
                 // OEM Settings can reject an otherwise valid public action.
             }
         }
-        returningFromPermissionSettings = false
         Toast.makeText(this, R.string.permission_settings_unavailable, Toast.LENGTH_LONG).show()
     }
 
@@ -362,18 +240,4 @@ class MainActivity : ComponentActivity() {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    private companion object {
-        const val GUIDE_RESTRICTED_SETTINGS = 0
-        const val GUIDE_OVERLAY = 1
-        const val GUIDE_BATTERY = 2
-        const val GUIDE_USAGE = 3
-        const val STATE_PERMISSION_GUIDE_STEP = "permission_guide_step"
-
-        fun initialPermissionGuideStep(): Int =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-                GUIDE_RESTRICTED_SETTINGS
-            } else {
-                GUIDE_OVERLAY
-            }
-    }
 }

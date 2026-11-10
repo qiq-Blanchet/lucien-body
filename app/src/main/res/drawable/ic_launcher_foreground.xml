@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Exact still-frame geometry from assets/clawd_sprites/idle_1.svg. -->
+    <path android:fillAlpha="0.5" android:fillColor="#000000" android:pathData="M36,70h36v4h-36z" />
+    <path android:fillColor="#DE886D" android:pathData="M32,34h44v28h-44zM24,46h8v8h-8zM76,46h8v8h-8zM36,62h4v8h-4zM44,62h4v8h-4zM60,62h4v8h-4zM68,62h4v8h-4z" />
+    <path android:fillColor="#000000" android:pathData="M40,42h4v8h-4zM64,42h4v8h-4z" />
+</vector>
