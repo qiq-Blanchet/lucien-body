@@ -155,7 +155,7 @@ const TOOLS = [
   {
     name: "luc_get_events",
     description:
-      "读取用户与 Luc clawd 的最新互动事件，不会删除或标记已读。事件类型：tap（单击）、double_tap（双击）、pet_head（摸头）、drag_start/drag_end（开始/结束拖动）、fling（甩动）、stuck_tap（吸附时点击）、app_foreground（前台应用变化）。结果按时间从新到旧排列。",
+      "读取用户与 Luc clawd 的最新互动事件，不会删除或标记已读。事件类型：tap、double_tap、pet_head、drag_start/drag_end、fling、stuck_tap、app_foreground（用户手机前台应用变化）。结果按时间从新到旧排列。",
     inputSchema: {
       type: "object",
       properties: {
