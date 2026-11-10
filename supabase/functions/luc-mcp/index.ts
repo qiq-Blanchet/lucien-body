@@ -85,7 +85,7 @@ const TOOLS = [
   {
     name: "luc_update",
     description:
-      "一次更新 Luc 小螃蟹的表情、气泡文字、气泡样式和三个情绪数值，至少传一项。所有传入字段在同一笔状态更新中生效。可用表情：idle（待机）、happy（开心）、angry（生气）、sleepy（困倦）、thinking（思考）、talking（说话）、love（喜爱）、smug（得意）、shocked（震惊）、confused（困惑）、shy（害羞）、proud（骄傲）、sulky（闹别扭）、lonely_1/2/3（不同孤独动作）、waving（挥手）、peeking（偷看）、morning（早晨）、night（夜晚）、eating（吃东西）、dancing（跳舞）、dizzy（眩晕）、clingy（黏人）、grabbed（被抓住）、stuck（侧边吸附）、stuck_tap（吸附时被点）、stuck_grab（从侧边抓起）。未传的表情和情绪数值保持当前值；未传 bubble_text 时清掉旧气泡，防止上一句话被重新播放。",
+      "一次更新 Luc 小螃蟹的表情、气泡文字、气泡样式和三个情绪数值，至少传一项。所有传入字段在同一笔状态更新中生效。可用表情：idle、happy、angry、sleepy、thinking、talking、love、smug、shocked、confused、shy、proud、sulky、lonely_1/2/3、waving、peeking、morning、night、eating、dancing、dizzy、clingy、grabbed（被抓住）、stuck（侧边吸附）、stuck_tap（吸附时被点）、stuck_grab（从侧边抓起）。未传的表情和情绪数值保持当前值；未传 bubble_text 时清掉旧气泡，防止上一句话被重新播放。",
     inputSchema: {
       type: "object",
       properties: {
@@ -155,7 +155,7 @@ const TOOLS = [
   {
     name: "luc_get_events",
     description:
-      "读取你与小螃蟹的最新互动事件，不会删除或标记已读。事件类型：tap（单击）、double_tap（双击）、pet_head（摸头）、drag_start/drag_end（开始/结束拖动）、fling（甩动）、stuck_tap（吸附时点击）、app_foreground（前台应用变化）。结果按时间从新到旧排列。",
+      "读取用户与小螃蟹的最新互动事件，不会删除或标记已读。事件类型：tap（单击）、double_tap（双击）、pet_head（摸头）、drag_start/drag_end（开始/结束拖动）、fling（甩动）、stuck_tap（吸附时点击）、app_foreground（前台应用变化）。结果按时间从新到旧排列。",
     inputSchema: {
       type: "object",
       properties: {
