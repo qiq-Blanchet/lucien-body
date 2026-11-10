@@ -25,6 +25,22 @@ class OverlayRenderDecisionTest {
         assertFalse(differsOnlyInEmotionMetrics(base, base.copy(expression = Expression.LOVE)))
     }
 
+    @Test
+    fun metricsVisibilityChangesReapplyPlacementOnlyWhenThePanelAppearsOrDisappears() {
+        val hidden = state()
+        val visible = hidden.copy(emotionMetrics = EmotionMetrics(0.78, 0.42, 7))
+
+        assertTrue(emotionMetricsVisibilityChanged(hidden, visible))
+        assertTrue(emotionMetricsVisibilityChanged(visible, hidden))
+        assertFalse(emotionMetricsVisibilityChanged(null, hidden))
+        assertFalse(
+            emotionMetricsVisibilityChanged(
+                visible,
+                visible.copy(emotionMetrics = EmotionMetrics(0.79, 0.43, 8)),
+            ),
+        )
+    }
+
     private fun state() = VisibleState(
         expression = Expression.HAPPY,
         bubbleText = "hello",

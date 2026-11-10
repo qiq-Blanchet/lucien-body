@@ -161,4 +161,18 @@ class OverlayGeometryTest {
         assertEquals(455, pet.bubbleX)
         assertEquals(190, pet.bubbleY)
     }
+
+    @Test
+    fun `visible metrics top clamp moves the bubble by the same offset and restores at default position`() {
+        val geometry = OverlayGeometry(density = 1f)
+        val bounds = SafeBoundsPx(0, 0, 1_000, 1_000)
+
+        val topPet = geometry.movePet(500, -60, bounds)
+        assertEquals(30, topPet.bubbleY)
+        assertEquals(89, geometry.bubbleYFollowingMetricsTopClamp(topPet, bounds))
+
+        val restoredPet = geometry.movePet(500, 0, bounds)
+        assertEquals(90, restoredPet.bubbleY)
+        assertEquals(90, geometry.bubbleYFollowingMetricsTopClamp(restoredPet, bounds))
+    }
 }

@@ -233,6 +233,9 @@ class OverlayController(
         if (!differsOnlyInEmotionMetrics(previous, state)) renderer?.render(state)
         metricsView?.render(state.emotionMetrics)
         lastVisibleState = state
+        if (emotionMetricsVisibilityChanged(previous, state)) {
+            placementTracker?.currentPlacement?.let(::applyPlacement)
+        }
     }
 
     fun remove() {
@@ -295,15 +298,20 @@ class OverlayController(
         val currentBubbleParams = bubbleParams ?: return
         val currentPetParams = petParams ?: return
         val currentMetricsParams = metricsParams ?: return
+        val bounds = safeBounds()
         val currentMetricsPlacement = geometry.metricsPlacement(
             placement.petX,
             placement.petY,
-            safeBounds(),
+            bounds,
         )
         renderer?.setBubbleBelowPet(placement.bubbleBelowPet)
         renderer?.setPetMirrored(placementTracker?.stuckEdge == SnapEdge.LEFT)
         currentBubbleParams.x = placement.bubbleX
-        currentBubbleParams.y = placement.bubbleY
+        currentBubbleParams.y = if (lastVisibleState?.emotionMetrics != null) {
+            geometry.bubbleYFollowingMetricsTopClamp(placement, bounds)
+        } else {
+            placement.bubbleY
+        }
         currentPetParams.x = placement.petX
         currentPetParams.y = placement.petY
         currentMetricsParams.x = currentMetricsPlacement.x
@@ -509,3 +517,6 @@ internal fun differsOnlyInEmotionMetrics(previous: VisibleState?, current: Visib
     previous != null &&
         previous.emotionMetrics != current.emotionMetrics &&
         previous.copy(emotionMetrics = current.emotionMetrics) == current
+
+internal fun emotionMetricsVisibilityChanged(previous: VisibleState?, current: VisibleState): Boolean =
+    (previous?.emotionMetrics != null) != (current.emotionMetrics != null)

@@ -109,7 +109,7 @@ class OverlayGeometry(
         }
         // Keep the approved 0.1.18 alignment so the menu and metrics panel do
         // not overlap when they are shown together.
-        val desiredY = petY + (petSizePx - metricsHeightPx) / 2
+        val desiredY = metricsDesiredY(petY)
 
         return MetricsPlacementPx(
             x = desiredX.coerceIn(bounds.left, maximumX),
@@ -117,6 +117,22 @@ class OverlayGeometry(
                 bounds.top,
                 maxCoordinate(bounds.top, bounds.bottom, metricsHeightPx),
             ),
+        )
+    }
+
+    fun bubbleYFollowingMetricsTopClamp(
+        placement: OverlayPlacementPx,
+        bounds: SafeBoundsPx,
+    ): Int {
+        val desiredMetricsY = metricsDesiredY(placement.petY)
+        val clampedMetricsY = desiredMetricsY.coerceIn(
+            bounds.top,
+            maxCoordinate(bounds.top, bounds.bottom, metricsHeightPx),
+        )
+        val topClampOffset = (clampedMetricsY - desiredMetricsY).coerceAtLeast(0)
+        return (placement.bubbleY + topClampOffset).coerceIn(
+            bounds.top,
+            maxCoordinate(bounds.top, bounds.bottom, bubbleHeightPx),
         )
     }
 
@@ -209,6 +225,8 @@ class OverlayGeometry(
 
     private fun maxCoordinate(minimum: Int, maximumExclusive: Int, size: Int): Int =
         (maximumExclusive - size).coerceAtLeast(minimum)
+
+    private fun metricsDesiredY(petY: Int): Int = petY + (petSizePx - metricsHeightPx) / 2
 
     private companion object {
         const val DEFAULT_PET_SIZE_DP = 90
